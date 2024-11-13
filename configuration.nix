@@ -1,6 +1,4 @@
-{ config, lib, user, pkgs, meta, ... }:
-
-{
+{ config, lib, user, pkgs, meta, ... }: {
 
   nix = {
     package = pkgs.nixFlakes;
@@ -9,62 +7,35 @@
     '';
   };
 
+  imports = [
+    ./modules/code.nix
+    ./modules/gaming.nix
+    ./modules/hyprUtility.nix
+    ./modules/nvidia.nix
+    ./modules/others.nix
+    ./modules/theme.nix
+  ];
+
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = false;
 
-  # Enable OpenGL
-  hardware.opengl = {
+  # Enable Bluetooth
+  hardware.bluetooth.enable = true;
+  hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
+
+  # Enable sound with pipewire.
+  hardware.pulseaudio.enable = false;
+  security.rtkit.enable = true;
+
+  services.pipewire = {
     enable = true;
-    driSupport = true;
-    driSupport32Bit = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
   };
-
-  # Load nvidia driver for Xorg and Wayland
-  services.xserver.videoDrivers = ["nvidia"];
-
-  hardware.nvidia = {
-
-    # Modesetting is required.
-    modesetting.enable = true;
-
-    # Nvidia power management. Experimental, and can cause sleep/suspend to fail.
-    # Enable this if you have graphical corruption issues or application crashes after waking
-    # up from sleep. This fixes it by saving the entire VRAM memory to /tmp/ instead 
-    # of just the bare essentials.
-    powerManagement.enable = true;
-
-    # Fine-grained power management. Turns off GPU when not in use.
-    # Experimental and only works on modern Nvidia GPUs (Turing or newer).
-    powerManagement.finegrained = false;
-
-    # Use the NVidia open source kernel module (not to be confused with the
-    # independent third-party "nouveau" open source driver).
-    # Support is limited to the Turing and later architectures. Full list of 
-    # supported GPUs is at: 
-    # https://github.com/NVIDIA/open-gpu-kernel-modules#compatible-gpus 
-    # Only available from driver 515.43.04+
-    # Currently alpha-quality/buggy, so false is currently the recommended setting.
-    open = false;
-
-    # Enable the Nvidia settings menu,
-	  # accessible via `nvidia-settings`.
-    nvidiaSettings = true;
-
-    # Optionally, you may need to select the appropriate driver version for your specific GPU.
-    package = config.boot.kernelPackages.nvidiaPackages.stable;
-
-  };
-
-  # Enable GNOME desktop environment
-  services.xserver = {
-    enable = true;
-    displayManager.gdm.enable = true;
-    displayManager.gdm.wayland = true;
-    desktopManager.gnome.enable = true;
-  };
-
-  # enable docker
+  
+  # Enable docker
   virtualisation.docker.enable = true;
 
   # Set your time zone.
@@ -98,47 +69,7 @@
     nano
     git
     curl
-    tmux
-    heroic
-    lutris
-    vesktop
-    bitwarden
-    brave
-    goverlay
-    mangohud
-    protonup
-    bottles
-
-    # https://github.com/Ulauncher/Ulauncher/wiki/Hotkey-In-Wayland
-    ulauncher 
-    wmctrl
-
-    # Vscode and extensions
-    (vscode-with-extensions.override {
-      vscode = vscodium;
-      vscodeExtensions = with vscode-extensions; [
-        enkia.tokyo-night
-      ];
-    })
   ];
-
-  # allow unfree
-  nixpkgs.config.allowUnfree = true;
-
-  nixpkgs.config.allowUnfreePredicate = pkg : builtins.elem (lib.getName pkg)[
-    "steam"
-    "steam-original"
-    "steam-unwrapped"
-    "steam-run"
-  ];
-
-  programs = {
-    gamemode.enable = true;
-    steam = {
-      enable = true;
-      gamescopeSession.enable = true;
-    };
-  };
 
   # List services that you want to enable:
 
@@ -146,6 +77,8 @@
   services.openssh.enable = true;
 
 
-  system.stateVersion = "23.11";
+  system.stateVersion = "24.05";
 
 }
+
+#sudo nixos-rebuild switch --flake '/home/pozito/nixos#pozito-desktop'
