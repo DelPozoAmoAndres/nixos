@@ -3,9 +3,10 @@
 
   inputs = {
     # Nixpkgs and Home Manager
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
-      url = "github:nix-community/home-manager/release-24.05";
+      url = "github:nix-community/home-manager/release-24.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -27,10 +28,13 @@
     };
 
     # Themes
-    stylix.url = "github:danth/stylix";
+     stylix = {
+      url = "github:danth/stylix";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, disko, hyprland, hyprland-plugins, ... } @ inputs:
+  outputs = { self, nixpkgs, home-manager, disko, hyprland, hyprland-plugins, stylix, ... } @ inputs:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -45,7 +49,7 @@
           ./configuration.nix
 
           # Themes
-          inputs.stylix.nixosModules.stylix
+          stylix.nixosModules.stylix
 
           # Disko and Home Manager integration
           disko.nixosModules.disko

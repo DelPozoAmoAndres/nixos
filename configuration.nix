@@ -1,19 +1,21 @@
 { config, lib, user, pkgs, meta, ... }: {
 
   nix = {
-    package = pkgs.nixFlakes;
+    package = pkgs.nixVersions.stable;
     extraOptions = ''
       experimental-features = nix-command flakes
     '';
   };
 
   imports = [
-    ./modules/code.nix
+    ./modules/regreet.nix
+    ./modules/vscode.nix
     ./modules/gaming.nix
     ./modules/hyprUtility.nix
     ./modules/nvidia.nix
     ./modules/others.nix
     ./modules/theme.nix
+    ./modules/login.nix
   ];
 
   # Use the systemd-boot EFI boot loader.
@@ -69,6 +71,7 @@
     nano
     git
     curl
+    xf86_input_wacom
   ];
 
   # List services that you want to enable:
@@ -76,9 +79,9 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-
-  system.stateVersion = "24.05";
+  system.stateVersion = "24.11";
 
 }
 
 #sudo nixos-rebuild switch --flake '/home/pozito/nixos#pozito-desktop'
+#sudo nix-collect-garbage -d

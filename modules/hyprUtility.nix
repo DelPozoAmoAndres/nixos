@@ -4,15 +4,20 @@
     # $ nix search wget
     environment.systemPackages = with pkgs; [
         ulauncher 
-        gnome.nautilus
+        nautilus
         waybar
         pulseaudio
         pavucontrol
         kitty
         hyprpaper
         hyprlock
+        (pkgs.writeShellScriptBin "hyprexit" ''
+            ${hyprland}/bin/hyprctl dispatch exit
+            ${systemd}/bin/loginctl terminate-user "alnav"
+        '')
         hyprshot
         sway
+        playerctl
     ];
 
     programs = {

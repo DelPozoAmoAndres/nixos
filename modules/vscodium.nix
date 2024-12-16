@@ -1,7 +1,7 @@
-{pkgs, ...}: {
+{ pkgs, ... }: {
 
     # List packages installed in system profile. To search, run:
-    # $ nix search wget
+    # $ nix search vscode
     environment.systemPackages = with pkgs; [
         # Vscode and extensions
         (vscode-with-extensions.override {
@@ -14,4 +14,4 @@
             ];
         })
     ];
-}          
+}

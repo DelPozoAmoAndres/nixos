@@ -13,17 +13,17 @@
             package = config.boot.kernelPackages.nvidiaPackages.latest;
             nvidiaSettings = true;
             powerManagement.finegrained = false;
+            open = true;
         };
-        opengl = {
-            enable = true;
-            driSupport = true;
-            driSupport32Bit = true;
+        graphics = {
             extraPackages = with pkgs; [
                 nvidia-vaapi-driver
                 vaapiVdpau
                 libvdpau-va-gl
             ];
-        };
+            enable32Bit = true;
+            enable = true;
+        };     
     };
 
     services.xserver = {
@@ -35,5 +35,6 @@
                 wayland = true;
             };
         };
+        wacom.enable = true;
     };
 }
