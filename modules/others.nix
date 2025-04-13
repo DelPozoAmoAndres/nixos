@@ -8,5 +8,6 @@
         youtube-music
         telegram-desktop
         bitwarden
+        remmina
     ];
 }   

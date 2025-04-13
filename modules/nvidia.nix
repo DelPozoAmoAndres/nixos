@@ -23,7 +23,10 @@
             ];
             enable32Bit = true;
             enable = true;
-        };     
+        };
+        nvidia-container-toolkit = {
+            enable = true;
+        };
     };
 
     services.xserver = {

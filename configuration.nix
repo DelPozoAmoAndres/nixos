@@ -22,6 +22,12 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = false;
 
+  # Virtualisation 
+  programs.virt-manager.enable = true;
+  users.groups.libvirtd.members = ["pozito"];
+  virtualisation.libvirtd.enable = true;
+  virtualisation.spiceUSBRedirection.enable = true;
+
   # Enable Bluetooth
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
@@ -38,7 +44,10 @@
   };
   
   # Enable docker
-  virtualisation.docker.enable = true;
+  virtualisation.docker = {
+    enable = true;
+    extraOptions = "--config-file=/etc/docker/daemon.json --add-runtime=nvidia=/run/current-system/sw/bin/nvidia-container-runtime";
+  };
 
   # Set your time zone.
   time.timeZone = "Europe/Madrid";
@@ -72,7 +81,31 @@
     git
     curl
     xf86_input_wacom
+    docker-compose
+
+    #ios mobile
+    libimobiledevice
+    ifuse
+    usbutils
+
+    # Nvidia pass
+    arduino-ide
+    python3
+
+    # Nvidia pass
+    nvidia-container-toolkit
+    nvidia-docker
+    
+    # quickmenu 
+    quickemu
+    virt-viewer
+
   ];
+
+  services.usbmuxd = {
+    enable = true;
+    package = pkgs.usbmuxd2;
+  };
 
   # List services that you want to enable:
 
@@ -83,5 +116,5 @@
 
 }
 
-#sudo nixos-rebuild switch --flake '/home/pozito/nixos#pozito-desktop'
+#sudo nixos-rebuild switch --impure --flake '/home/pozito/nixos#pozito-desktop'
 #sudo nix-collect-garbage -d
