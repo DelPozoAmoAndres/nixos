@@ -102,10 +102,14 @@
 
   ];
 
+  networking.networkmanager.enable = true;
+
   services.usbmuxd = {
     enable = true;
     package = pkgs.usbmuxd2;
   };
+
+  services.udisks2.enable = true;
 
   # List services that you want to enable:
 

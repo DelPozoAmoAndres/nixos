@@ -23,6 +23,18 @@
       confirm_os_window_close = 0;
     };
   };
+
+  services.udiskie = {
+    enable = true;
+    settings = {
+        # workaround for
+        # https://github.com/nix-community/home-manager/issues/632
+        program_options = {
+            # replace with your favorite file manager
+            file_manager = "${pkgs.nemo-with-extensions}/bin/nemo";
+        };
+    };
+};
  
   # Home Manager is pretty good at managing dotfiles. The primary way to manage
   # plain files is through 'home.file'.

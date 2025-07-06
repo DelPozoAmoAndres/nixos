@@ -13,6 +13,8 @@
             vscode-extensions.ms-vscode-remote.remote-containers
             astro-build.astro-vscode
             ms-vsliveshare.vsliveshare
+            humao.rest-client
+            ms-vscode.cpptools
         ] ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
             {
                 name = "es7-react-js-snippets";
@@ -25,6 +27,12 @@
                 publisher = "bradlc";
                 version = "0.12.6";
                 sha256 = "sha256-lnWYw0eRpqYI6U1m6NMQD6Y7+Ae31zcy4CM+o5lB8DA=";
+            }
+            {
+                name="platformio-ide";
+                publisher = "platformio";
+                version = "3.3.4";
+                sha256 = "sha256-qfNz4IYjCmCMFLtAkbGTW5xnsVT8iDnFWjrgkmr2Slk=";
             }
 
         ];
