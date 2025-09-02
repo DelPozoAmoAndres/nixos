@@ -29,6 +29,13 @@
         };
     };
 
+    # List packages installed in system profile. To search, run:
+    # $ nix search wget
+    environment.systemPackages = with pkgs; [
+        nvidia-container-toolkit
+        nvidia-docker
+    ];
+
     services.xserver = {
         enable = true;
         videoDrivers = ["nvidia"];

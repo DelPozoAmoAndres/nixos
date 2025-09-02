@@ -1,5 +1,13 @@
-{ config, lib, user, pkgs, meta, ... }: {
+{ config, lib, user, pkgs, meta, inputs, ... }:
 
+let
+   unstablePkgs = import inputs.nixpkgs-unstable {
+    system = "x86_64-linux";
+    config = {
+      allowUnfree = true;
+    };
+  };
+in {
   nix = {
     package = pkgs.nixVersions.stable;
     extraOptions = ''
@@ -9,13 +17,13 @@
 
   imports = [
     ./modules/regreet.nix
-    ./modules/vscode.nix
     ./modules/gaming.nix
     ./modules/hyprUtility.nix
     ./modules/nvidia.nix
     ./modules/others.nix
     ./modules/theme.nix
-    ./modules/login.nix
+    ./modules/ios.nix
+    ./modules/flatpak.nix
   ];
 
   # Use the systemd-boot EFI boot loader.
@@ -30,7 +38,7 @@
 
   # Enable Bluetooth
   hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
+  hardware.bluetooth.powerOnBoot = true;
 
   # Enable sound with pipewire.
   hardware.pulseaudio.enable = false;
@@ -74,6 +82,10 @@
     }
   ];
 
+  nixpkgs.config = {
+    allowUnfree = true;
+  };
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
@@ -83,33 +95,27 @@
     xf86_input_wacom
     docker-compose
 
-    #ios mobile
-    libimobiledevice
-    ifuse
-    usbutils
-
-    # Nvidia pass
-    arduino-ide
-    python3
-
-    # Nvidia pass
-    nvidia-container-toolkit
-    nvidia-docker
+    systemd
+    ccache
+    cmake
+    gnumake
+    ncurses 
+    flex 
+    bison 
+    gperf
+    gcc
+    ninja
+    (python3.withPackages (ps: with ps; [ pip setuptools wheel ]))
     
     # quickmenu 
     quickemu
     virt-viewer
 
+    # Añadimos vscode-fhs desde unstablePkgs
+    unstablePkgs.vscode-fhs
   ];
 
   networking.networkmanager.enable = true;
-
-  services.usbmuxd = {
-    enable = true;
-    package = pkgs.usbmuxd2;
-  };
-
-  services.udisks2.enable = true;
 
   # List services that you want to enable:
 
@@ -117,6 +123,10 @@
   services.openssh.enable = true;
 
   system.stateVersion = "24.11";
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "electron-33.4.11"
+  ];
 
 }
 

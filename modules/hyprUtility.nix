@@ -1,29 +1,38 @@
-{pkgs, ...}: {
+{ pkgs, inputs, ... }:
 
-    # List packages installed in system profile. To search, run:
-    # $ nix search wget
-    environment.systemPackages = with pkgs; [
-        ulauncher 
-        nautilus
-        waybar
-        pulseaudio
-        pavucontrol
-        kitty
-        hyprpaper
-        hyprlock
-        (pkgs.writeShellScriptBin "hyprexit" ''
-            ${hyprland}/bin/hyprctl dispatch exit
-            ${systemd}/bin/loginctl terminate-user "alnav"
-        '')
-        hyprshot
-        sway
-        playerctl
-    ];
-
-    programs = {
-        hyprland = {    
-            enable = true;    
-            xwayland.enable = true;
-        };
+let
+  unstablePkgs = import inputs.nixpkgs-unstable {
+    system = "x86_64-linux";
+    config = {
+      allowUnfree = true;
     };
-}         
+  };
+in {
+  # Paquetes del sistema
+  environment.systemPackages = with pkgs; [
+    ulauncher 
+    nautilus
+    pulseaudio
+    pavucontrol
+    kitty
+    hyprpaper
+    hyprlock
+    (pkgs.writeShellScriptBin "hyprexit" ''
+      ${pkgs.hyprland}/bin/hyprctl dispatch exit
+      ${pkgs.systemd}/bin/loginctl terminate-user "pozito"
+    '')
+    hyprshot
+    sway
+    playerctl
+  ] ++ [
+    # Hyprpanel desde nixpkgs-unstable
+    unstablePkgs.hyprpanel
+  ];
+
+  programs = {
+    hyprland = {    
+      enable = true;    
+      xwayland.enable = true;
+    };
+  };
+}

@@ -5,6 +5,7 @@
     # Nixpkgs and Home Manager
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     home-manager = {
       url = "github:nix-community/home-manager/release-24.11";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,6 +16,7 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
     
     # Hyprland and Plugins
@@ -26,7 +28,7 @@
       url = "github:hyprwm/hyprland-plugins";
       inputs.hyprland.follows = "hyprland";
     };
-
+    
     # Themes
      stylix = {
       url = "github:danth/stylix";
