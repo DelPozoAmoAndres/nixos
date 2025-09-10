@@ -23,7 +23,6 @@ in {
     ./modules/others.nix
     ./modules/theme.nix
     ./modules/ios.nix
-    ./modules/flatpak.nix
   ];
 
   # Use the systemd-boot EFI boot loader.
@@ -94,6 +93,7 @@ in {
     curl
     xf86_input_wacom
     docker-compose
+    albert
 
     systemd
     ccache
@@ -132,3 +132,4 @@ in {
 
 #sudo nixos-rebuild switch --impure --flake '/home/pozito/nixos#pozito-desktop'
 #sudo nix-collect-garbage -d
+#sudo nix-env -p /nix/var/nix/profiles/system --delete-generations

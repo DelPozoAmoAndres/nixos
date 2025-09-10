@@ -24,9 +24,6 @@
     };
   };
 
-  # Rofi
-  programs.rofi.enable = true;
-
   services.udiskie = {
     enable = true;
     settings = {
@@ -49,5 +46,4 @@
     XDG_DATA_DIRS = "${pkgs.glib}/share:/var/lib/flatpak/exports/share:${config.home.homeDirectory}/.local/share/flatpak/exports/share";
   };
 
- 
 }

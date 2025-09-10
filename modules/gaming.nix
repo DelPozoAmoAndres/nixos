@@ -3,12 +3,12 @@
     # List packages installed in system profile. To search, run:
     # $ nix search wget
     environment.systemPackages = with pkgs; [
-        heroic
-        lutris
+        #heroic
+        #lutris
         goverlay
         mangohud
         protonup
-        bottles
+        #bottles
 
         # Others
         vulkan-loader
