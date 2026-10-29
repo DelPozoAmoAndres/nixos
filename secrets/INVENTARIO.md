@@ -26,7 +26,6 @@ la clave que lo descifra **no** está en el repo.
 | `stitch_api_key` | Stitch (Google) | `X-Goog-Api-Key` | `~/.config/stitch/api-key`, MCP de opencode | `sops set secrets/secrets.yaml '["stitch_api_key"]' "<KEY>"'` |
 | `splitweb_ssh_key` | Gitea (SSH) | clave privada OpenSSH | `~/.ssh/splitweb` | `sops set secrets/secrets.yaml '["splitweb_ssh_key"]' "<clave>"'` |
 | `id_oracle` | VPS Oracle | clave privada RSA | `~/.ssh/id_oracle` | `sops set secrets/secrets.yaml '["id_oracle"]' "<clave>"'` |
-| `splitweb_env` | splitweb | `.env` (postgres, pocketbase, session secret) | symlink `splitweb/.env` → `~/.config/sops-nix/secrets/splitweb.env` | `sops set secrets/secrets.yaml '["splitweb_env"]' "$(cat .env)"` |
 | `social_network_backend_env` | social-network (backend) | `.env.dev` (DB, Redis, OpenRouter, tokens de revisión) | symlink `backend/.env.dev` → `~/.config/sops-nix/secrets/social-network-backend.env` | `sops set secrets/secrets.yaml '["social_network_backend_env"]' "$(cat .env.dev)"` |
 | `social_network_app_env` | social-network-app | `.env` (Supabase) | symlink `.env` → `~/.config/sops-nix/secrets/social-network-app.env` | `sops set secrets/secrets.yaml '["social_network_app_env"]' "$(cat .env)"` |
 
@@ -36,10 +35,18 @@ la clave que lo descifra **no** está en el repo.
 |-------|----------|--------|--------------|--------------|
 | `user_password_hash` | Sistema | hash de la contraseña de `pozito` | `/run/secrets-for-users/user_password_hash` (lo lee `users-groups` en la activación) | `sops set secrets/system-secrets.yaml '["user_password_hash"]' "<hash>"'` |
 
+## Proyectos de asealab (NO se tocan)
+
+`splitweb`, `splitapp` y el resto de repos de `asealab` **no están gestionados
+por sops y no se tocan**: sus credenciales se quedan en sus `.env` locales y
+nada de ellos se sube a este repositorio (ni a ningun repo nuestro). Si un
+propio de asealab pide un cambio, se hace solo en su maquina y nunca se pushea.
+
 ## Excepciones (fuera de sops, a propósito)
 
 | Credencial | Dónde | Por qué no se sopea |
 |------------|-------|---------------------|
+| `splitweb/.env` (postgres, pocketbase, session secret) | disco, 0644 | Proyecto de asealab: sus credenciales no se mueven ni se guardan en este repo. |
 | `~/.config/pangolin/accounts.json` (sessionToken + secreto OLM) | disco, 0600 | La app **gestiona y refresca** su propio token de sesión. Si el fichero viniera de sops, en el siguiente arranque se usaría un token caducado y la VPN no conectaría. |
 | Clave age privada | `~/.config/sops/age/keys.txt`, 0600 | Es la clave maestra: no puede estar cifrada con sí misma. Necesita backup cifrado **fuera de este disco**. |
 | `~/.config/sops/age/keys.txt` (pública) `age16vsm…` | `secrets/*.yaml` | Recipient público: cifrado, se puede publicar. |

@@ -270,11 +270,8 @@ in
     # ~/.config/sops-nix/secrets/<nombre> (ver INVENTARIO.md).
     # Ojo: el `name` no puede llevar puntos (sops lo lee como ruta), por eso
     # el nombre con punto va en `path`.
-    secrets."splitweb_env" = {
-      key = "splitweb_env";
-      path = "${config.home.homeDirectory}/.config/sops-nix/secrets/splitweb.env";
-      mode = "0400";
-    };
+    # NOTA: los proyectos de asealab (splitweb, splitapp) NO se tocan: sus
+    # credenciales no se guardan aqui ni se suben a ningun repo nuestro.
     secrets."social_network_backend_env" = {
       key = "social_network_backend_env";
       path = "${config.home.homeDirectory}/.config/sops-nix/secrets/social-network-backend.env";
