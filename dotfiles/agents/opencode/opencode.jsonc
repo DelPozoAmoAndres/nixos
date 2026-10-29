@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ── Default Model ────────────────────────────────────────────
+  "model": "opencode-go/mimo-v2.6-flash",
+
+
+  // ── Agent Configurations ─────────────────────────────────────
+  "agent": {
+    "build": {
+      "description": "Primary agent with all tools enabled for development work",
+      "mode": "primary",
+      "temperature": 0.3
+    },
+    "plan": {
+      "description": "Planning and analysis without making changes",
+      "mode": "primary",
+      "temperature": 0.1,
+      "permission": {
+        "edit": "ask",
+        "bash": "ask"
+      }
+    }
+  },
+
+  // ── Skill Permissions ────────────────────────────────────────
+  "permission": {
+    "skill": {
+      "*": "allow"
+    }
+  },
+  "plugin": [
+    [
+      "opencode-orchestrator",
+      {
+        "agentConcurrency": {
+          "commander": 1,
+          "planner": 10,
+          "worker": 10,
+          "reviewer": 10
+        },
+        "missionLoop": {
+          "ledger": true,
+          "markdownMemory": true
+        }
+      }
+    ]
+  ]
+}

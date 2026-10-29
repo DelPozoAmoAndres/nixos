@@ -1,0 +1,15 @@
+{
+  "kitSeed": "/home/pozito/.penpot-ai-kit",
+  "lastClient": "opencode",
+  "installs": {
+    "opencode": {
+      "mode": "none",
+      "files": [
+        "/home/pozito/.config/opencode/opencode.json"
+      ],
+      "targetDir": null,
+      "mcpServer": null,
+      "mcpConfig": null
+    }
+  }
+}

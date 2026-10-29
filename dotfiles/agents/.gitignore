@@ -1,0 +1,11 @@
+# No versionar: dependencias, secretos y estado de ejecucion
+node_modules/
+package.json
+package-lock.json
+bun.lock
+service.json
+run.log
+patches/
+instances/
+cli/
+*.bak

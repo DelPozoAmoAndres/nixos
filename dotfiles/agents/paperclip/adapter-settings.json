@@ -1,0 +1,17 @@
+{
+  "disabledTypes": [
+    "openclaw_gateway",
+    "kimi_local",
+    "http",
+    "hermes_gateway",
+    "hermes_local",
+    "grok_local",
+    "gemini_local",
+    "cursor_cloud",
+    "cursor",
+    "codex_local",
+    "claude_local",
+    "acpx_local",
+    "pi_local"
+  ]
+}
