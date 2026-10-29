@@ -42,13 +42,11 @@ copiar_dir "$SRC/opencode/agents" "$HOME_DIR/.config/opencode/agents"
 copiar_dir "$SRC/opencode/agent"  "$HOME_DIR/.config/opencode/agent"
 copiar_fichero "$SRC/opencode/opencode.json" "$HOME_DIR/.config/opencode/opencode.json"
 
-# El config con los MCP (Stitch, Penpot) lleva credenciales, asi que no va al
-# repo. Si el destino ya tiene bloque "mcp" se respeta y no se toca.
-if [ -f "$HOME_DIR/.config/opencode/opencode.jsonc" ] && grep -q '"mcp"' "$HOME_DIR/.config/opencode/opencode.jsonc"; then
-  echo "  · opencode.jsonc conserva tu bloque mcp local, no se sobreescribe"
-else
-  copiar_fichero "$SRC/opencode/opencode.jsonc" "$HOME_DIR/.config/opencode/opencode.jsonc"
-fi
+# opencode.jsonc NO se copia desde el repo: lo genera home-manager en
+# ~/.config/opencode/opencode.jsonc (sops.templates) con las claves de los
+# MCP (Penpot, Stitch) ya sustituidas por sus valores descifrados. Copiarlo
+# aqui pisaria el fichero renderizado y dejaria los marcadores sin sustituir.
+echo "  · opencode.jsonc lo genera home-manager desde sops (no se copia)"
 
 echo "Kit de Penpot"
 copiar_dir "$SRC/penpot-ai-kit" "$HOME_DIR/.penpot-ai-kit"

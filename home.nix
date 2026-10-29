@@ -24,11 +24,17 @@ in
   };
 
   # ─── Git ───────────────────────────────────────────────────────────────
+  # El helper de credenciales lee ~/.config/git/credentials, que se genera
+  # desde sops en runtime (ver "Secretos"). Asi no existe ningun fichero de
+  # credenciales en claro en el disco.
   programs.git = {
     enable = true;
-    settings.user = {
-      email = "asdfandres09@gmail.com";
-      name = "Andrés";
+    settings = {
+      user = {
+        email = "asdfandres09@gmail.com";
+        name = "Andrés";
+      };
+      credential.helper = "store --file=${config.home.homeDirectory}/.config/git/credentials";
     };
   };
 
@@ -184,19 +190,32 @@ in
   };
 
   # ─── Secretos ─────────────────────────────────────────────────────────
-  # La clave privada del servidor Oracle y el token de Gitea se guardan
-  # cifrados en secrets/secrets.yaml (sops + age). El modulo sops-nix de
-  # home-manager los descifra en runtime y los deja en
-  # $XDG_RUNTIME_DIR/secrets.d, con symlinks en ~/.ssh/id_oracle y
-  # ~/.config/gitea/token. Asi el texto plano nunca entra en el
-  # nix store (que es legible por cualquiera) ni en el repositorio.
+  # TODAS las credenciales de servicios viven cifradas (sops + age) en
+  # secrets/secrets.yaml. El modulo sops-nix de home-manager las descifra
+  # en runtime: el texto plano solo existe en $XDG_RUNTIME_DIR (tmpfs) y
+  # jamas en el nix store (legible por cualquiera) ni en el repositorio.
   #
   # La clave age vive en ~/.config/sops/age/keys.txt, FUERA del repo.
   # Sin ella no se puede reconstruir el sistema ni descifrar los secretos.
+  #
+  # Inventario completo: secrets/INVENTARIO.md
   sops = {
     age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
     defaultSopsFile = ./secrets/secrets.yaml;
 
+    # Marcadores que sops-install-secrets sustituye por el valor real al
+    # renderizar las plantillas de mas abajo. Son literales (no plantillas
+    # Go): sops hace un ReplaceAll del marcador por el secreto.
+    placeholder = {
+      github_token = "__GITHUB_TOKEN__";
+      gitea_token = "__GITEA_TOKEN__";
+      docker_auth = "__DOCKER_AUTH__";
+      penpot_mcp_key = "__PENPOT_MCP_KEY__";
+      stitch_api_key = "__STITCH_API_KEY__";
+    };
+
+    # ── Secretos con fichero propio ─────────────────────────────────────
+    # Clave privada del servidor Oracle.
     secrets."id_oracle" = {
       key = "id_oracle";
       # Destino del symlink. El fichero real vive en el directorio de
@@ -213,5 +232,111 @@ in
       path = "${config.home.homeDirectory}/.config/gitea/token";
       mode = "0400";
     };
+
+    # PAT de GitHub. Lo usan git (helper), gh y las plantillas de abajo.
+    secrets."github_token" = {
+      key = "github_token";
+      path = "${config.home.homeDirectory}/.config/github/token";
+      mode = "0400";
+    };
+
+    # Credencial del registro Docker de la LAN (docker.asealab.lan).
+    secrets."docker_auth" = {
+      key = "docker_auth";
+      path = "${config.home.homeDirectory}/.config/docker/auth";
+      mode = "0400";
+    };
+
+    # Clave del MCP de Penpot (design.penpot.app) y del MCP de Stitch.
+    secrets."penpot_mcp_key" = {
+      key = "penpot_mcp_key";
+      path = "${config.home.homeDirectory}/.config/penpot/mcp-key";
+      mode = "0400";
+    };
+    secrets."stitch_api_key" = {
+      key = "stitch_api_key";
+      path = "${config.home.homeDirectory}/.config/stitch/api-key";
+      mode = "0400";
+    };
+
+    # Clave SSH del repo splitweb en Gitea.
+    secrets."splitweb_ssh_key" = {
+      key = "splitweb_ssh_key";
+      path = "${config.home.homeDirectory}/.ssh/splitweb";
+      mode = "0400";
+    };
+
+    # Ficheros .env de las aplicaciones. Cada proyecto hace symlink a
+    # ~/.config/sops-nix/secrets/<nombre> (ver INVENTARIO.md).
+    # Ojo: el `name` no puede llevar puntos (sops lo lee como ruta), por eso
+    # el nombre con punto va en `path`.
+    secrets."splitweb_env" = {
+      key = "splitweb_env";
+      path = "${config.home.homeDirectory}/.config/sops-nix/secrets/splitweb.env";
+      mode = "0400";
+    };
+    secrets."social_network_backend_env" = {
+      key = "social_network_backend_env";
+      path = "${config.home.homeDirectory}/.config/sops-nix/secrets/social-network-backend.env";
+      mode = "0400";
+    };
+    secrets."social_network_app_env" = {
+      key = "social_network_app_env";
+      path = "${config.home.homeDirectory}/.config/sops-nix/secrets/social-network-app.env";
+      mode = "0400";
+    };
+
+    # ── Plantillas: ficheros que las herramientas necesitan en claro ────
+    # Se renderizan en runtime con los secretos sustituidos. Git, gh y
+    # docker leen de aqui; no queda ninguna copia en claro en disco.
+    templates."~/.config/git/credentials" = {
+      name = "git-credentials";
+      path = "${config.home.homeDirectory}/.config/git/credentials";
+      content = ''
+        https://x-access-token:__GITHUB_TOKEN__@github.com
+        https://dummyuser:__GITEA_TOKEN__@git.asealab.lan
+      '';
+      mode = "0600";
+    };
+
+    templates."~/.config/gh/hosts.yml" = {
+      name = "gh-hosts.yml";
+      path = "${config.home.homeDirectory}/.config/gh/hosts.yml";
+      content = ''
+        github.com:
+            users:
+                DelPozoAmoAndres:
+                    oauth_token: __GITHUB_TOKEN__
+            oauth_token: __GITHUB_TOKEN__
+            user: DelPozoAmoAndres
+      '';
+      mode = "0600";
+    };
+
+    templates."~/.config/docker/config.json" = {
+      name = "docker-config.json";
+      path = "${config.home.homeDirectory}/.config/docker/config.json";
+      content = ''
+        {
+          "auths": {
+            "docker.asealab.lan": {
+              "auth": "__DOCKER_AUTH__"
+            }
+          }
+        }
+      '';
+      mode = "0600";
+    };
+
+    # Config de opencode con las claves de los MCP (Penpot y Stitch). El
+    # fichero del repo trae los marcadores __PENPOT_MCP_KEY__ y
+    # __STITCH_API_KEY__, que aqui se sustituyen por los valores descifrados.
+    templates."~/.config/opencode/opencode.jsonc" = {
+      name = "opencode.jsonc";
+      path = "${config.home.homeDirectory}/.config/opencode/opencode.jsonc";
+      content = builtins.readFile ./dotfiles/agents/opencode/opencode.jsonc;
+      mode = "0600";
+    };
   };
 }
+

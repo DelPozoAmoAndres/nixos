@@ -4,6 +4,25 @@
   // ── Default Model ────────────────────────────────────────────
   "model": "opencode-go/mimo-v2.6-flash",
 
+  // ── MCP Servers ──────────────────────────────────────────────
+  // Los marcadores __STITCH_API_KEY__ y __PENPOT_MCP_KEY__ se sustituyen
+  // por los valores descifrados (sops) al desplegar este fichero; el repo
+  // nunca contiene las claves en claro. Ver home.nix (sops.templates).
+  "mcp": {
+    "stitch": {
+      "type": "remote",
+      "url": "https://stitch.googleapis.com/mcp",
+      "enabled": true,
+      "headers": {
+        "X-Goog-Api-Key": "__STITCH_API_KEY__"
+      }
+    },
+    "penpot": {
+      "type": "remote",
+      "url": "https://design.penpot.app/mcp/stream?userToken=__PENPOT_MCP_KEY__",
+      "enabled": true
+    }
+  },
 
   // ── Agent Configurations ─────────────────────────────────────
   "agent": {
