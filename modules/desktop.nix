@@ -90,12 +90,22 @@
     hyprlock
     hyprshot
     playerctl
-    hyprpanel
+    # HyprPanel fue ARCHIVADO en nixpkgs (el paquete lanza un error y el
+    # sistema no rebuild). El sustituto oficial es Wayle, reescrito en
+    # Rust con GTK4: mucho mas ligero (HyprPanel era GTK/JS con un motor
+    # web entero debajo) y con modulos NATIVOS de CPU y RAM, que en
+    # HyprPanel eran placeholders sin lectura real por nucleo.
+    wayle
     (pkgs.writeShellScriptBin "hyprexit" ''
       ${pkgs.hyprland}/bin/hyprctl dispatch exit
       ${pkgs.systemd}/bin/loginctl terminate-user "pozito"
     '')
-    brave
+    # Brave fue eliminado de nixpkgs (sin mantenedores para resolver
+    # problemas de seguridad). Chromium es el mismo motor: mismo
+    # V8, mismo Blink, mismas extensiones. Se pierde el bloqueo de
+    # trackers y los sincronizadores de Brave, que se pueden recuperar
+    # con la extension uBlock Origin si hacen falta.
+    chromium
     vesktop
     pear-desktop
     telegram-desktop

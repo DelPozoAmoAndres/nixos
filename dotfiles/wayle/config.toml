@@ -1,0 +1,219 @@
+########################################################################
+# Wayle — sustituto de HyprPanel (archivado en nixpkgs).
+#
+# Replica el layout de la config.json de HyprPanel:
+#   left   : power, separator, window-title
+#   center : workspaces
+#   right  : cpu, ram, volume, network, bluetooth, notifications, clock
+#
+# Mejoras sobre HyprPanel:
+#   - CPU y RAM son modulos NATIVOS (no placeholders): incluyen
+#     temperatura, frecuencia y thresholds de color por carga.
+#   - Wayle esta escrito en Rust con GTK4: consume mucha menos RAM que
+#     HyprPanel (que es GTK/JS con un motor web entero por debajo).
+#   - Wayle tiene un modulo "custom" que ejecuta un comando de shell, lo
+#     que permite meter el CPU por nucleo (ver custom-cpu-cores).
+########################################################################
+
+# ─── Barra ─────────────────────────────────────────────────────────────
+[bar]
+location = "top"
+scale = 1.0
+padding = 0.35
+padding-ends = 0.5
+module-gap = 0.5
+exclusive = true
+layer = "top"
+background-opacity = 100
+rounding = "none"
+shadow = "none"
+
+# Botones: sin bordes, sin fondo, texto plano. Es el estilo plano que
+# tenia HyprPanel (todo con rgba(0,0,0,0) de fondo).
+button-variant = "block-prefix"
+button-opacity = 100
+button-bg-opacity = 0
+button-icon-size = 1.0
+button-label-size = 1.0
+button-label-weight = "semibold"
+button-label-padding = 0.2
+button-rounding = "none"
+button-gap = 0.4
+button-icon-position = "start"
+button-border-location = "none"
+button-border-width = 0
+
+[bar.colors]
+bg = "#00000000"
+
+# ─── Layout ────────────────────────────────────────────────────────────
+[[bar.layout]]
+monitor = "*"
+left = [ "power", "separator", "window-title" ]
+center = [ "hyprland-workspaces" ]
+right = [
+    "cpu",
+    "ram",
+    "volume",
+    "network",
+    "bluetooth",
+    "notifications",
+    "clock",
+]
+
+# ─── Tema ──────────────────────────────────────────────────────────────
+# La paleta NO se define aqui: el modulo wayle/hm.nix de nixpkgs la
+# conecta con stylix, de modo que wayle usa exactamente el mismo tema
+# catppuccin mocha que el resto del escritorio (Hyprland, kitty, apps
+# GTK) y ambos cambian a la vez si se cambia el esquema base16.
+#
+# Definirla aqui daria conflicto de definicion con ese modulo.
+[styling]
+theme-provider = "wayle"
+scale = 1.0
+rounding = "sm"
+
+# ─── CPU ───────────────────────────────────────────────────────────────
+[modules.cpu]
+# El modulo nativo de CPU muestra el porcentaje TOTAL de los 8 hilos.
+# Para el detalle por nucleo esta el modulo custom "cpu-cores" de mas
+# abajo, que se apoya en el script cpu-cores.sh.
+poll-interval-ms = 2000
+format = "{{ percent }}%"
+icon-name = "ld-cpu-symbolic"
+icon-show = false
+label-show = true
+label-color = "#cdd6f4"
+button-bg-color = "#00000000"
+
+# Thresholds de color: verde bajo, amarillo a partir del 60%, rojo a
+# partir del 85%. Antes esto no era posible: HyprPanel solo sabia
+# mostrar el numero sin color segun la carga.
+[[modules.cpu.thresholds]]
+above = 60
+icon-color = "status-warning"
+label-color = "status-warning"
+
+[[modules.cpu.thresholds]]
+above = 85
+icon-color = "status-error"
+label-color = "status-error"
+
+# ─── RAM ───────────────────────────────────────────────────────────────
+[modules.ram]
+poll-interval-ms = 2000
+# Se muestra el porcentaje y, en el tooltip, el detalle de swap. Con el
+# zram al 100% el swap ya no se llena por la次回ion, asi que el
+# porcentaje de RAM es el dato real de presion de memoria.
+format = "{{ percent }}%"
+icon-name = "ld-memory-stick-symbolic"
+icon-show = false
+label-show = true
+label-color = "#f9e2af"
+button-bg-color = "#00000000"
+
+[[modules.ram.thresholds]]
+above = 80
+icon-color = "status-warning"
+label-color = "status-warning"
+
+[[modules.ram.thresholds]]
+above = 93
+icon-color = "status-error"
+label-color = "status-error"
+
+# ─── Volumen ───────────────────────────────────────────────────────────
+[modules.volume]
+icon-name = "ld-volume-high-symbolic"
+icon-show = true
+label-show = false
+format = "{{ percent }}%"
+label-color = "#cdd6f4"
+button-bg-color = "#00000000"
+
+# ─── Red ───────────────────────────────────────────────────────────────
+[modules.network]
+icon-show = true
+label-show = false
+button-bg-color = "#00000000"
+
+# ─── Bluetooth ─────────────────────────────────────────────────────────
+[modules.bluetooth]
+icon-show = true
+label-show = false
+button-bg-color = "#00000000"
+
+# ─── Notificaciones ────────────────────────────────────────────────────
+[modules.notifications]
+icon-name = "ld-bell-symbolic"
+icon-unread = "ld-bell-dot-symbolic"
+icon-dnd = "ld-bell-off-symbolic"
+icon-show = true
+label-show = true
+popup-position = "top-right"
+popup-duration = 5000
+button-bg-color = "#00000000"
+
+# ─── Reloj ─────────────────────────────────────────────────────────────
+[modules.clock]
+format = "%H:%M"
+icon-name = "tb-calendar-time-symbolic"
+icon-show = false
+label-show = true
+label-color = "#b4befe"
+button-bg-color = "#00000000"
+
+# ─── Power ─────────────────────────────────────────────────────────────
+[modules.power]
+icon-name = "ld-power-symbolic"
+icon-bg-color = "#00000000"
+button-bg-color = "#00000000"
+
+# ─── Workspaces de Hyprland ────────────────────────────────────────────
+[modules.hyprland-workspaces]
+min-workspace-count = 1
+monitor-specific = false
+show-special = true
+urgent-show = true
+display-mode = "label"
+label-use-name = false
+numbering = "absolute"
+divider = " "
+app-icons-show = false
+app-icons-dedupe = true
+app-icons-empty = "tb-minus-symbolic"
+icon-gap = 0.3
+workspace-padding = 0.5
+
+# ─── Titulo de ventana ─────────────────────────────────────────────────
+[modules.window-title]
+format = "{{ title }}"
+icon-name = "ld-app-window-symbolic"
+icon-show = false
+label-show = true
+label-max-length = 60
+label-color = "#cdd6f4"
+button-bg-color = "#00000000"
+
+# ─── Separador ─────────────────────────────────────────────────────────
+[modules.separator]
+size = 1
+length = 1.5
+color = "#585b70"
+
+# ─── CPU por nucleo ────────────────────────────────────────────────────
+# Modulo custom que ejecuta cpu-cores.sh, que lee /proc/stat y devuelve
+# el uso de cada uno de los 8 hilos (4 nucleos fisicos con SMT).
+#
+# Es la forma de ver el detalle por core que HyprPanel no podia dar: su
+# modulo de CPU era un placeholder que solo leia el agregado de
+# /proc/stat.
+[[modules.custom]]
+id = "cpu-cores"
+command = "$HOME/.config/wayle/cpu-cores.sh"
+mode = "poll"
+interval-ms = 2000
+format = "{{ output }}"
+tooltip-format = "Nucleos fisicos 0-3 (pares = hilos SMT del mismo nucleo)\n{{ output }}"
+label-show = true
+label-max-length = 40

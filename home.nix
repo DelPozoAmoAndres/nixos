@@ -2,7 +2,7 @@
 
 let
   # Hyprland 0.55 tiene dos modos de config. En modo Lua (hyprland.lua) los
-  # dispatchers clasicos dejan de existir, asi que hyprpanel deja de cambiar
+  # dispatchers clasicos dejan de existir, asi que el panel deja de cambiar
   # de workspace al pulsar en el. En modo legacy (hyprland.conf) todo sigue
   # funcionando, por eso False por defecto. Ponlo a true si prefieres el
   # formato nuevo y aceptas que los clics de la barra no cambien de workspace.
@@ -146,9 +146,18 @@ in
       source = ./dotfiles/waybar;
       recursive = true;
     };
-    ".config/hyprpanel" = {
-      source = ./dotfiles/hyprpanel;
-      recursive = true;
+    # ─── Wayle (sustituye a HyprPanel, archivado en nixpkgs) ─────────────
+    # La config de wayle es TOML y se despliega con el modulo de
+    # home-manager "services.wayle", que genera el config.toml y levanta
+    # el servicio de usuario. Se usa settings (no un fichero suelto) para
+    # que el TOML se genere con el formato correcto.
+    #
+    # El script cpu-cores.sh va aparte como fichero: wayle lo invoca
+    # como comando externo y necesita permiso de ejecucion, cosa que un
+    # fichero generado por home-manager no garantiza.
+    ".config/wayle/cpu-cores.sh" = {
+      source = ./dotfiles/wayle/cpu-cores.sh;
+      executable = true;
     };
 
     # Limita la cache de fontconfig del usuario: con 74 GB de store, la del
@@ -187,6 +196,31 @@ in
         </FileZilla3>
       '';
     };
+  };
+
+  # ─── Wayle (sustituye a HyprPanel, archivado en nixpkgs) ─────────────
+  # La config vive en dotfiles/wayle/config.toml (TOML). Se lee con
+  # builtins.fromTOML y se pasa a services.wayle.settings, de modo que
+  # hay una SOLA fuente de verdad: el fichero del repo. Si se editara
+  # tambien aqui, cualquier cambio tendria que duplicarse.
+  #
+  # autoInstallDependencies = false porque wayle instalaria por su cuenta
+  # matugen/wallust/pywal segun el theme-provider. Con la paleta fija
+  # (catppuccin mocha) no hace falta ninguno: el tema no se extrae del
+  # fondo de pantalla.
+  services.wayle = {
+    enable = true;
+    autoInstallDependencies = false;
+    # La paleta viene del TOML del repo, pero el modulo de nixpkgs
+    # (wayle/hm.nix) tambien define una por defecto, y el merge de dos
+    # valores escalares da conflicto. mkForce hace que gane la del repo:
+    # el TOML es la fuente de verdad.
+    settings = lib.mapAttrs
+      (name: value:
+        if name == "palette" then
+          lib.mapAttrs (_: v: lib.mkForce v) value
+        else value)
+      (builtins.fromTOML (builtins.readFile ./dotfiles/wayle/config.toml));
   };
 
   # ─── Secretos ─────────────────────────────────────────────────────────

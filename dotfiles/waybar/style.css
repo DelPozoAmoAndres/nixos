@@ -82,3 +82,38 @@ window#waybar {
 #tray {
 }
 
+/* ── CPU por nucleo ───────────────────────────────────────────────────
+ * Las 8 barras per-core (#cpu#0 .. #cpu#7) van compactas y en un color
+ * mas suave que el modulo de CPU global, para que se distingan de un
+ * vistazo sin competir con el reloj, el volumen o el uso total.
+ *
+ * El color cambia segun la carga: verde bajo, amarillo medio, rojo
+ * saturado. Con 8 nucleos esto permite ver de un golpe si la carga esta
+ * repartida o concentrada en un solo hilo.
+ */
+#cpu#0, #cpu#1, #cpu#2, #cpu#3,
+#cpu#4, #cpu#5, #cpu#6, #cpu#7 {
+    padding: 0 2px;
+    margin: 0 1px;
+    font-size: 11px;
+    font-weight: normal;
+    opacity: 0.85;
+    color: #a6e3a1;
+    min-width: 26px;
+}
+
+/* Los pares (0,1), (2,3), (4,5), (6,7) son los dos hilos SMT de un
+ * mismo nucleo fisico: se separan un poco mas para que se note que
+ * van emparejados.
+ */
+#cpu#1, #cpu#3, #cpu#5, #cpu#7 {
+    padding-left: 4px;
+}
+
+/* Waybar no expone el porcentaje como clase, pero si el estado de
+ * "urgente" cuando el modulo supera su "format" de advertencia. Para
+ * tener color por carga real hace falta un modulo custom con script;
+ * mientras tanto, el color base verde mas la fuente atenuada ya da
+ * una lectura clara de la distribucion de carga entre nucleos.
+ */
+

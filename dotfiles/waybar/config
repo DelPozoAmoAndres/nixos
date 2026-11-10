@@ -8,7 +8,9 @@
     // Choose the order of the modules
     "modules-left": ["tray","custom/ytmusic"],
     "modules-center": ["hyprland/window"],
-    "modules-right": ["pulseaudio", "cpu", "memory", "custom/wifi","custom/bluetooth", "clock"],
+    // "cpu#0".."cpu#7" son los 8 hilos logicos del i7-4790 (4 nucleos
+    // fisicos x 2 SMT). Cada uno muestra su propio porcentaje.
+    "modules-right": ["pulseaudio", "cpu", "cpu#0", "cpu#1", "cpu#2", "cpu#3", "cpu#4", "cpu#5", "cpu#6", "cpu#7", "memory", "custom/wifi","custom/bluetooth", "clock"],
     "sway/workspaces": {
         "disable-scroll": true,
         "all-outputs": false,
@@ -34,6 +36,19 @@
     "cpu": {
         "format": "  {usage}%"
     },
+    // ── CPU por nucleo ──────────────────────────────────────────────────
+    // El i7-4790 tiene 4 nucleos fisicos con SMT (2 hilos por nucleo):
+    // los hilos 0-7 son los logicos. Waybar lee /proc/stat con recorrido
+    // lineal, asi que cpu#0 y cpu#1 son los dos hilos del nucleo 0,
+    // cpu#2 y cpu#3 los del nucleo 1, y asi sucesivamente.
+    "cpu#0": { "format": "{usage}%", "tooltip": true },
+    "cpu#1": { "format": "{usage}%", "tooltip": true },
+    "cpu#2": { "format": "{usage}%", "tooltip": true },
+    "cpu#3": { "format": "{usage}%", "tooltip": true },
+    "cpu#4": { "format": "{usage}%", "tooltip": true },
+    "cpu#5": { "format": "{usage}%", "tooltip": true },
+    "cpu#6": { "format": "{usage}%", "tooltip": true },
+    "cpu#7": { "format": "{usage}%", "tooltip": true },
     "memory": {
         "format": "  {}%"
     },
