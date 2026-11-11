@@ -23,9 +23,18 @@ destino="net.launchpad.ulauncher"
 ruta="/net/launchpad/ulauncher"
 metodo="net.launchpad.ulauncher.toggle_window"
 
-# El daemon responde? (dbus-send sale con codigo != 0 si no hay nadie
-# escuchando en ese nombre de bus).
-if dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1; then
+# El daemon vive?
+#
+# No vale con mirar si dbus-send responde: cuando el proceso de
+# ulauncher muere (hace SIGSEGV a veces), el nombre del bus queda
+# registrado y dbus-send sigue saliendo con codigo 0, asi que daria
+# "todo bien" con el daemon muerto.
+#
+# Hay que mirar al proceso de verdad. El nombre real incluye el
+# prefijo del wrapper de Nix: ".ulauncher-wrap".
+if pgrep -x ".ulauncher-wrap" >/dev/null 2>&1; then
+    # El daemon vive: se le pide el toggle.
+    dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1
     exit 0
 fi
 

@@ -489,6 +489,10 @@ Detalles no triviales:
 - El toggle por D-Bus a pelo (`dbus-send` sin `--print-reply`) si
   funciona, pero es **asincrono**: hace falta un margen (`sleep 0.03`
   en el shim del paquete) para que se aplique.
+- **No se puede comprobar si el daemon vive con `dbus-send`**: cuando el
+  proceso muere (SIGSEGV), el nombre del bus sigue registrado y
+  `dbus-send` sale con codigo 0. Hay que mirar al proceso
+  (`pgrep -x ".ulauncher-wrap"`).
 - `ulauncher-toggle` del paquete saca por consola un error ("Cannot
   get client list properties") que viene del `wmctrl -a` final (X11, no
   funciona en Wayland). Es **inofensivo**.
