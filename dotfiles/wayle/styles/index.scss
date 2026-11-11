@@ -46,13 +46,15 @@
 // layout, no al de la variable, y sale estirado.
 //
 // Hay que fijarle el tamaño al image explicitamente.
+//
+// OJO: NO se pueden poner "width"/"height" aqui: GTK4 no acepta esas
+// propiedades en CSS y el parser escupe "No property named width" por
+// consola en cada recarga. Solo -gtk-icon-size, min-width y min-height.
 .dashboard {
     image {
         -gtk-icon-size: 16px;
         min-width: 16px;
         min-height: 16px;
-        width: 16px;
-        height: 16px;
     }
 }
 

@@ -601,7 +601,64 @@ grep -o 'viewBox="[^"]*"' \
 
 ---
 
-## 10. Pendiente
+## 10. Compresión zstd en /home (el disco estaba al 93%)
+
+El disco (`/dev/mapper/luks_btrfs`, 927 GB) estaba al **93%**: 842 GB
+usados, 66 GB libres. Con 460 GB de datos en `/home` (265 GB en
+`Documents`, 195 GB en `.local`, de los cuales 179 GB son Steam), el
+margen era dangerously bajo.
+
+### El bug: la compresión estaba pedida pero no se aplicaba
+
+El fstab pedía compresión para `/home`:
+
+```
+/dev/mapper/luks_btrfs /home btrfs compress=zstd,noatime,subvol=/home 0 0
+```
+
+Pero el montaje real era:
+
+```
+rw,noatime,ssd,space_cache=v2,subvolid=256,subvol=/home
+```
+
+**Sin `compress=zstd`.** Medido: 263 GB de `Documents` ocupaban
+exactamente 263 GB en disco (`btrfs filesystem du` contra
+`du --apparent-size`), o sea, cero compresión.
+
+La causa es que Btrfs guarda la compresión **por subvolumen**, y
+`/home` es un subvolumen **anidado** dentro de `/`. El initrd monta `/`
+primero (con `x-initrd.mount`, para que el árbol btrfs quede completo),
+así que cuando se monta `/home` encima, el kernel **no puede cambiar la
+compresión de un subvolumen que ya está montado** y descarta la opción
+en silencio.
+
+### La solución
+
+1. **`compress=zstd` en el montaje de la raíz** (`modules/storage.nix`).
+   Al comprimir también `/`, los subvolúmenes anidados heredan zstd.
+   Antes `/` se forzaba con `mkForce` y solo `x-initrd.mount`.
+
+2. **`btrfs property set <subvol> compression zstd`** en caliente, para
+   cada subvolumen con datos. Afecta a los ficheros nuevos
+   inmediatamente, sin desmontar nada.
+
+3. **`btrfs filesystem defragment -r /home`** para reescribir los datos
+   existentes y que también se compriman. Es la parte lenta (horas con
+   460 GB), pero se puede parar en cualquier momento: lo que no se haya
+   comprimido sigue intacto.
+
+   En `scripts/comprimir-btrfs.sh` está el proceso completo, idempotente.
+
+### Cuánto se ahorra
+
+Con 333.363 ficheros de texto/código en `Documents`, que con zstd
+comprimen al 17-28% (medido sobre ficheros reales: `index.js` de 204 KB
+a 58 KB, `canvasjs.min.js` de 475 KB a 82 KB).
+
+---
+
+## 11. Pendiente
 
 - **Arranca la VM y comprueba que 12 GB le bastan.** Si al hacer
   compilaciones pesadas se queda corta, se puede subir a 14 GB — el
