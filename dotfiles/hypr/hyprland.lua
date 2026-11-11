@@ -97,22 +97,12 @@ autostart_unique("hyprpaper --config ~/.config/hypr/hyprpaper.conf", "hyprpaper"
 autostart("wayle panel start")
 
 -- Lanzador de aplicaciones.
--- Ulauncher.
---
--- Se arranca SIN --hide-window a proposito: con ese flag la ventana
--- NUNCA se crea, y el toggle por D-Bus no tiene nada que mostrar
--- (el shim responde con exito pero no aparece nada).
---
--- La ventana se crea y luego se oculta con un toggle, dejando el
--- daemon vivo y con la ventana lista: a partir de ahi el atajo
--- alterna de forma instantanea (~45ms).
---
--- El toggle se hace con un pequeno retardo para que la ventana exista
--- cuando se llama.
--- ulauncher es un daemon y no termina nunca, asi que va en background
--- ("&"); el toggle despues espera a que la ventana exista.
+-- Ulauncher: el script de arranque crea la ventana y la deja oculta,
+-- con el daemon vivo. Ver dotfiles/hypr/ulauncher-start.sh para el
+-- por que (con --hide-window la ventana nunca se crea y el toggle no
+-- tiene nada que mostrar).
 autostart_unique(
-    "ulauncher --no-window-shadow & sleep 2 && ulauncher-toggle",
+    "sh ~/.config/hypr/ulauncher-start.sh",
     "ulauncher", ".ulauncher-wrap")
 
 -- Monitor principal: el DP-1.
@@ -241,12 +231,15 @@ hl.device({
 -- funciona. Lo que NO funciona es pasar el comando como una variable
 -- sin comillas (hl.dsp.exec_cmd(brave) da error de sintaxis) ni
 -- escribirlo como codigo Lua suelto.
--- Ulauncher: el shim "ulauncher-toggle" del paquete, que es como
--- siempre se ha hecho. El error que suelta por consola ("Cannot get
--- client list properties") viene del "wmctrl -a" que hace al final
--- (X11, no funciona en Wayland) y es inofensivo: el toggle por D-Bus
--- de antes ya ha hecho su trabajo.
-hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd("ulauncher-toggle"))
+-- Ulauncher: el shim "ulauncher-toggle" del paquete (que es como
+-- siempre se ha hecho) mas el relanzado si el daemon ha muerto.
+--
+-- El error que suelta por consola ("Cannot get client list properties")
+-- viene del "wmctrl -a" que hace el shim al final (X11, no funciona en
+-- Wayland) y es inofensivo: el toggle por D-Bus de antes ya ha hecho su
+-- trabajo.
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(
+    "sh ~/.config/hypr/ulauncher-toggle.sh"))
 -- Brave: el flag --no-sandbox lo pone el wrapper del paquete (el
 -- chrome-sandbox lleva el bit setuid, que el store de Nix no admite).
 hl.bind(seccMod .. " + B", hl.dsp.exec_cmd("brave"))

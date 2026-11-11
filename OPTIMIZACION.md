@@ -454,44 +454,50 @@ segundo plano hasta que aparecen.
 Sintoma: `SUPER+RETURN` no hacia nada, mientras que `SUPER+B` (brave)
 funcionaba.
 
-Causa: el autostart lanzaba ulauncher con el `&` dentro de un `sh -c`, que
-mataba al proceso nada mas arrancar (ver la seccion 7). Sin daemon
-vivo, el shim `ulauncher-toggle` no tiene a quien preguntar por D-Bus y
-no hace nada.
+**Causa raiz:** el autostart lanzaba ulauncher con el `&` dentro de un
+`sh -c`, que mataba al proceso nada mas arrancar (ver la seccion 7).
+Sin daemon vivo, el shim `ulauncher-toggle` no tiene a quien preguntar
+por D-Bus y no hace nada.
 
-Al principio se diagnostico como un bug de ulauncher 5.15.7 sobre
-Wayland, y se monto un script propio que relanzaba el proceso. Era una
-via de trabajo correcta pero lenta (~0.5s, el arranque de Python), y
-ademas ocultaba el problema de fondo.
+Por el camino se diagnostico como un bug de ulauncher 5.15.7 sobre
+Wayland, y se monto un script propio que relanzaba el proceso cada
+vez. Funcionaba, pero tardaba ~0.5s (el arranque de Python), que es lo
+que notaba el usuario. Ademas ulauncher hace SIGSEGV de vez en cuando
+con Python 3.14 (se ve en `coredumpctl`: crash en
+`gtk_css_value_icon_theme_compute`, al resolver un icono del tema
+mientras construye la ventana), y sin daemon el atajo deja de funcionar.
 
-La solucion buena es la que siempre se uso, con UNA diferencia
-importante:
+**La clave (que faltaba):** con `--hide-window` la ventana de ulauncher
+**nunca se crea**, y el toggle por D-Bus responde con exito pero no
+muestra nada, porque no hay nada que mostrar. Hay que **inicializar**
+la ventana primero y luego alternar.
 
-```
-bind = $mainMod, RETURN, exec, ulauncher-toggle
-```
+**Solucion:**
 
-pero el daemon se arranca **sin** `--hide-window`, y se oculta con un
-toggle justo despues:
+- `dotfiles/hypr/ulauncher-start.sh`: arranca ulauncher SIN
+  `--hide-window` (la ventana se crea), espera a que exista y se
+  asiente, y la oculta con un toggle. Deja el daemon vivo con la
+  ventana creada: el estado en el que el atajo alterna de forma
+  instantanea.
+- `dotfiles/hypr/ulauncher-toggle.sh`: el shim del paquete, mas el
+  relanzado automatico si el daemon no responde (por el SIGSEGV).
 
-```
-ulauncher --no-window-shadow & sleep 2 && ulauncher-toggle
-```
+Medido: **42-45ms** por pulsacion.
 
-Por que: con `--hide-window` la ventana **nunca se crea**, y el toggle
-por D-Bus no tiene nada que mostrar (responde con exito pero no
-aparece nada). Hay que **inicializar** la ventana primero y luego
-alternar con el toggle. Asi el daemon queda vivo con la ventana creada,
-y el atajo alterna de forma instantanea: **43-45ms**.
+Detalles no triviales:
 
-El error que suelta el shim por consola ("Cannot get client list
-properties") viene del `wmctrl -a` que hace al final (X11, no funciona
-en Wayland) y es **inofensivo**: el toggle por D-Bus de antes ya ha
-hecho su trabajo.
-
-Consecuencia: `ulauncher-toggle` alterna entre mostrar y **destruir**
-la ventana (no la oculta), asi que al volver a pulsarla hay que
-relanzarla. El shim lo manages solo.
+- El toggle por D-Bus a pelo (`dbus-send` sin `--print-reply`) si
+  funciona, pero es **asincrono**: hace falta un margen (`sleep 0.03`
+  en el shim del paquete) para que se aplique.
+- `ulauncher-toggle` del paquete saca por consola un error ("Cannot
+  get client list properties") que viene del `wmctrl -a` final (X11, no
+  funciona en Wayland). Es **inofensivo**.
+- Para saber si la ventana esta visible se usa `focusHistoryID == 0`.
+  **No** sirven los campos `mapped`/`visible` de `hyprctl` (en Wayland
+  la ventana sigue existiendo con `mapped=true` aunque este oculta) ni
+  el tamano (606x76 tanto visible como oculta).
+- El toggle **destruye** la ventana en vez de ocultarla, asi que al
+  volver a pulsarla hay que recrearla. El shim lo gestiona solo.
 
 ### Verificación
 
