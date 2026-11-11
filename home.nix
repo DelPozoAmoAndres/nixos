@@ -152,6 +152,11 @@ in
     ".config/hypr/ipc-compat.sh" = {
       source = ./dotfiles/hypr/ipc-compat.sh;
     };
+    # Toggle de ulauncher por D-Bus (el shim del paquete falla en Wayland).
+    ".config/hypr/ulauncher-toggle.sh" = {
+      source = ./dotfiles/hypr/ulauncher-toggle.sh;
+      executable = true;
+    };
     ".config/hypr/wallpaperflare.com_wallpaper.jpg" = {
       source = ./dotfiles/hypr/wallpaperflare.com_wallpaper.jpg;
     };

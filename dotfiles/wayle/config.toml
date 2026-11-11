@@ -52,7 +52,7 @@ location = "top"
 scale = 1.0
 padding = 0.12
 padding-ends = 0.4
-module-gap = 0.5
+module-gap = 0.8
 exclusive = true
 layer = "top"
 
@@ -84,7 +84,18 @@ button-gap = 0.4
 # los iconos entre si. El group-module-gap (0.25 por defecto) es
 # mayor que el module-gap de la barra, asi que sin esto los iconos
 # salen mas separados que el resto de la barra.
-button-group-module-gap = 0.05
+button-group-module-gap = 0.02
+
+# El grupo tambien tiene su propio fondo (bg-elevated por defecto),
+# que es el rectangulo clarito que se veia detras de los iconos de la
+# derecha. A transparente, como el resto de la barra.
+button-group-background = "#00000000"
+button-group-opacity = 0
+button-group-border-location = "none"
+button-group-border-width = 0
+button-group-padding = 0
+button-group-rounding = "none"
+
 button-icon-position = "start"
 button-border-location = "none"
 button-border-width = 0

@@ -449,6 +449,38 @@ segundo plano hasta que aparecen.
 
 **3. Brave sin RUNPATH** (ver la sección 4).
 
+### Ulauncher: el atajo no toggleaba
+
+Tres fallos encadenados:
+
+1. **El shim `ulauncher-toggle` del paquete falla en Wayland.** Acaba
+   haciendo un `wmctrl -a "Ulauncher - Application Launcher"` (X11) y su
+   salida es un error: `Cannot get client list properties
+   (_NET_CLIENT_LIST or _WIN_CLIENT_LIST)`, con código 1.
+
+2. **El `toggle_window` de D-Bus no oculta la ventana.** En ulauncher
+   5.15.7 sobre Wayland la ventana queda *mapped* pero invisible, y el
+   siguiente toggle tampoco la muestra. Solo se.relanza el proceso.
+
+3. **`--hide-window` deja el daemon en un estado irrecuperable.** Con
+   ese flag, el toggle ya no muestra nunca la ventana.
+
+Solución (`dotfiles/hypr/ulauncher-toggle.sh`):
+
+- Si la ventana está en primer plano → se mata el proceso (se oculta).
+- Si no → se muestra con el toggle de D-Bus, o se relanza ulauncher si
+  el daemon no responde.
+
+Para detectar si está visible se usa `focusHistoryID == 0` (la ventana
+enfocada). **No** sirven los campos `mapped`/`visible` de `hyprctl` (en
+Wayland la ventana sigue existiendo con `mapped=true` aunque esté
+oculta) ni el tamaño (606x76 tanto visible como oculta).
+
+Nota: ulauncher 5.15.7 con Python 3.14 hace SIGSEGV de vez en cuando
+(se ve en `coredumpctl`). El script relanza el daemon si no responde.
+Forzar Python 3.13 no es viable: en nixpkgs no tiene `gi` ni `dbus`
+empaquetados.
+
 ### Verificación
 
 `scripts/verificar-arranque.sh` comprueba todo de una vez tras un
