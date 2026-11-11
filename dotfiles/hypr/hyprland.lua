@@ -54,6 +54,29 @@ local function autostart(cmd)
     hl.exec_cmd(cmd .. " >/dev/null 2>&1")
 end
 
+-- Igual que autostart, pero mata antes la instancia anterior del
+-- proceso.
+--
+-- Sin esto, cada recarga del config de Hyprland (o cada "reload")
+-- lanzaba OTRA copia de hyprpaper y de ulauncher: se acumulaban
+-- (4 copias de hyprpaper, 6 capas de wallpaper) y cada una dibujaba su
+-- propia capa encima.
+-- pkill -x (coincidencia EXACTA del nombre del proceso) en vez de -f
+-- (linea de comandos completa): con -f el propio shell que ejecuta el
+-- pkill contiene el patron en su linea de comandos y se mataria a si
+-- mismo.
+--
+-- Los nombres reales de los procesos incluyen el prefijo del wrapper de
+-- Nix (".ulauncher-wrap"), asi que se pasan los dos.
+local function autostart_unique(cmd, ...)
+    local patrones = { ... }
+    local kill = ""
+    for _, p in ipairs(patrones) do
+        kill = kill .. "pkill -x " .. p .. " 2>/dev/null; "
+    end
+    hl.exec_cmd(kill .. "sleep 0.3; " .. cmd .. " >/dev/null 2>&1")
+end
+
 -- Puente del socket IPC de Hyprland 0.55 (lo movio a <instancia>/
 -- .socket.sock; las librerias de barra siguen buscando <instancia>/
 -- socket). Sin esto los clics de la barra no responden.
@@ -63,7 +86,7 @@ autostart("sh ~/.config/hypr/ipc-compat.sh")
 -- lo busca en el directorio de config de Hyprland, pero si se ejecuta
 -- antes de que ese directorio exista (o con otro HOME) no lo
 -- encuentra y se queda sin wallpaper.
-autostart("hyprpaper --config ~/.config/hypr/hyprpaper.conf")
+autostart_unique("hyprpaper --config ~/.config/hypr/hyprpaper.conf", "hyprpaper")
 
 -- El agente de polkit lo arranca su propio servicio de systemd de
 -- usuario (hyprpolkitagent.service): el binario esta en libexec/ y no
@@ -74,7 +97,7 @@ autostart("hyprpaper --config ~/.config/hypr/hyprpaper.conf")
 autostart("wayle panel start")
 
 -- Lanzador de aplicaciones.
-autostart("ulauncher --hide-window --no-window-shadow")
+autostart_unique("ulauncher --hide-window --no-window-shadow", "ulauncher", ".ulauncher-wrap")
 
 -- Monitor principal: el DP-1.
 --
