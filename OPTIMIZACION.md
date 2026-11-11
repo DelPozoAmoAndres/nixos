@@ -468,8 +468,11 @@ Tres fallos encadenados:
 Solución (`dotfiles/hypr/ulauncher-toggle.sh`):
 
 - Si la ventana está en primer plano → se mata el proceso (se oculta).
-- Si no → se muestra con el toggle de D-Bus, o se relanza ulauncher si
-  el daemon no responde.
+- Si no → se **relanza** ulauncher: aparece con su ventana.
+
+Relanzar en vez de usar el toggle de D-Bus es lo que funciona: con el
+toggle, si la ventana está oculta (o no existe), ulauncher no la
+muestra nunca. Solo una instancia nueva la muestra.
 
 Para detectar si está visible se usa `focusHistoryID == 0` (la ventana
 enfocada). **No** sirven los campos `mapped`/`visible` de `hyprctl` (en

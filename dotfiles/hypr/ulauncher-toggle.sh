@@ -4,24 +4,25 @@
 #
 # POR QUE NO SE USA EL TOGGLE POR D-BUS:
 #
-# Ulauncher 5.15.7 en Wayland tiene el toggle_window roto: la ventana
-# queda "mapped" pero invisible, y el siguiente toggle tampoco la
-# muestra. Ademas, el shim "ulauncher-toggle" del paquete acaba
-# haciendo un "wmctrl -a" (X11) que en Wayland no funciona, y su salida
-# es un error ("Cannot get client list properties") con codigo 1.
+# Ulauncher 5.15.7 sobre Wayland tiene el toggle_window roto: si la
+# ventana esta oculta (o no existe todavia), el toggle no la muestra. La
+# ventana queda "mapped" pero invisible y el siguiente toggle tampoco
+# la muestra. Solo relanzar el proceso la muestra de forma fiable.
 #
-# QUE SE HACE EN SU LUGAR:
+# Ademas, el shim "ulauncher-toggle" del paquete acaba haciendo un
+# "wmctrl -a" (X11) que en Wayland no funciona, y su salida es un error
+# ("Cannot get client list properties") con codigo 1.
 #
-# Ulauncher se relanza en cada pulsacion. Una instancia nueva muestra
-# su ventana al arrancar (es el unico estado en el que se ve de forma
-# fiable). Para ocultarla, se cierra con el atajo de escape o se mata
-# el proceso: si la ventana esta abierta se mata; si no, se abre.
+# QUE SE HACE:
 #
-# La deteccion de "esta abierta" no puede usar los campos mapped/
-# visible de hyprctl: en Wayland la ventana sigue existiendo aunque
-# ulauncher la oculte. Se usa el titulo de la capa, que ulauncher
-# cambia a "Ulauncher - Application Launcher" solo cuando la ventana
-# esta en primer plano.
+#   - Si la ventana esta en primer plano (focusHistoryID == 0) se mata
+#     el proceso: se oculta.
+#   - Si no esta, se relanza ulauncher: aparece con su ventana.
+#
+# Para detectar si esta visible se usa focusHistoryID == 0. NO sirven los
+# campos mapped/visible de hyprctl (en Wayland la ventana sigue
+# existiendo con mapped=true aunque este oculta) ni el tamano (606x76
+# tanto visible como oculta).
 
 set -u
 
@@ -30,11 +31,6 @@ ruta="/net/launchpad/ulauncher"
 metodo="net.launchpad.ulauncher.toggle_window"
 
 # La ventana esta en primer plano?
-#
-# El criterio es focusHistoryID == 0 (la ventana enfocada). No sirve el
-# campo mapped/visible: en Wayland la ventana sigue existiendo con
-# mapped=true aunque ulauncher la oculte, y el tamano tampoco cambia
-# (606x76 tanto visible como oculta).
 visible() {
     hyprctl clients -j 2>/dev/null | python3 -c "
 import json, subprocess, sys
@@ -51,32 +47,26 @@ sys.exit(1)
 }
 
 if [ "$(visible)" = "sí" ]; then
-    # Esta abierta: se cierra matando el proceso. Ulauncher vuelve a
-    # arrancar oculto en la siguiente pulsacion.
+    # Esta abierta: se mata el proceso para ocultarla.
     pkill -x ulauncher 2>/dev/null || true
     pkill -x .ulauncher-wrap 2>/dev/null || true
     exit 0
 fi
 
-# No esta abierta: si el daemon ya vive, se muestra con el toggle.
-if pgrep -x ".ulauncher-wrap" >/dev/null 2>&1; then
-    if dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1; then
-        exit 0
-    fi
-fi
-
-# El daemon no vive (se ha muerto por el SIGSEGV de Python 3.14, o no
-# ha arrancado): se relanza y se espera a que registre.
+# No esta abierta: se relanza. Ulauncher muestra su ventana al arrancar
+# (sin --hide-window, que la deja en un estado del que no se puede
+# salir).
 pkill -x ulauncher 2>/dev/null || true
 pkill -x .ulauncher-wrap 2>/dev/null || true
 sleep 0.3
 
 ulauncher --no-window-shadow >/dev/null 2>&1 &
 
+# Se espera a que la ventana aparezca y se registre en D-Bus.
 for _ in $(seq 1 24); do
     sleep 0.25
-    if dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1; then
-        exit 0
+    if [ "$(visible)" = "sí" ]; then
+        break
     fi
 done
 
