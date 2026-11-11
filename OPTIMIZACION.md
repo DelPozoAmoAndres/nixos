@@ -451,38 +451,37 @@ segundo plano hasta que aparecen.
 
 ### Ulauncher: el atajo no toggleaba
 
-Tres fallos encadenados:
+Sintoma: `SUPER+RETURN` no hacia nada, mientras que `SUPER+B` (brave)
+funcionaba.
 
-1. **El shim `ulauncher-toggle` del paquete falla en Wayland.** Acaba
-   haciendo un `wmctrl -a "Ulauncher - Application Launcher"` (X11) y su
-   salida es un error: `Cannot get client list properties
-   (_NET_CLIENT_LIST or _WIN_CLIENT_LIST)`, con código 1.
+Causa: el autostart lanzaba ulauncher con el `&` dentro de un `sh -c`, que
+mataba al proceso nada mas arrancar (ver la seccion 7). Sin daemon
+vivo, el shim `ulauncher-toggle` no tiene a quien preguntar por D-Bus y
+no hace nada.
 
-2. **El `toggle_window` de D-Bus no oculta la ventana.** En ulauncher
-   5.15.7 sobre Wayland la ventana queda *mapped* pero invisible, y el
-   siguiente toggle tampoco la muestra. Solo se.relanza el proceso.
+Al principio se diagnostico como un bug de ulauncher 5.15.7 sobre
+Wayland, y se monto un script propio que relanzaba el proceso. Era una
+via de trabajo correcta pero lenta (~0.5s, el arranque de Python), y
+ademas ocultaba el problema de fondo.
 
-3. **`--hide-window` deja el daemon en un estado irrecuperable.** Con
-   ese flag, el toggle ya no muestra nunca la ventana.
+La solucion buena es la que siempre se uso:
 
-Solución (`dotfiles/hypr/ulauncher-toggle.sh`):
+```
+exec-once = ulauncher --hide-window --no-window-shadow
+bind = $mainMod, RETURN, exec, ulauncher-toggle
+```
 
-- Si la ventana está en primer plano → se mata el proceso (se oculta).
-- Si no → se **relanza** ulauncher: aparece con su ventana.
+Con `--hide-window` el daemon arranca sin ventana y el shim
+`ulauncher-toggle` la muestra al vuelo: **42-70ms**, instantaneo.
 
-Relanzar en vez de usar el toggle de D-Bus es lo que funciona: con el
-toggle, si la ventana está oculta (o no existe), ulauncher no la
-muestra nunca. Solo una instancia nueva la muestra.
+El error que suelta el shim por consola ("Cannot get client list
+properties") viene del `wmctrl -a` que hace al final (X11, no funciona
+en Wayland) y es **inofensivo**: el toggle por D-Bus de antes ya ha
+hecho su trabajo.
 
-Para detectar si está visible se usa `focusHistoryID == 0` (la ventana
-enfocada). **No** sirven los campos `mapped`/`visible` de `hyprctl` (en
-Wayland la ventana sigue existiendo con `mapped=true` aunque esté
-oculta) ni el tamaño (606x76 tanto visible como oculta).
-
-Nota: ulauncher 5.15.7 con Python 3.14 hace SIGSEGV de vez en cuando
-(se ve en `coredumpctl`). El script relanza el daemon si no responde.
-Forzar Python 3.13 no es viable: en nixpkgs no tiene `gi` ni `dbus`
-empaquetados.
+Consecuencia: `ulauncher-toggle` alterna entre mostrar y **destruir**
+la ventana (no la oculta), asi que al volver a pulsarla hay que
+relanzarla. El shim lo manages solo.
 
 ### Verificación
 

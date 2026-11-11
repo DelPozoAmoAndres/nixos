@@ -97,17 +97,9 @@ autostart_unique("hyprpaper --config ~/.config/hypr/hyprpaper.conf", "hyprpaper"
 autostart("wayle panel start")
 
 -- Lanzador de aplicaciones.
--- Ulauncher.
---
--- Se arranca SIN --hide-window: con ese flag, ulauncher 5.15.7 se queda
--- en un estado en el que el toggle por D-Bus ya no muestra la ventana
--- (queda mapped pero invisible, y el toggle solo la oculta). Sin el,
--- arranca visible y el toggle alterna con normalidad.
---
--- La ventana visible al arrancar se cierra justo despues, con un
--- toggle, para que quede como estaba (oculto) pero con el daemon en
--- un estado en el que el atajo si funciona.
-autostart_unique("ulauncher --no-window-shadow", "ulauncher", ".ulauncher-wrap")
+-- Ulauncher: con --hide-window arranca oculto, que es como se ha
+-- hecho siempre, y el atajo lo muestra con el shim ulauncher-toggle.
+autostart_unique("ulauncher --hide-window --no-window-shadow", "ulauncher", ".ulauncher-wrap")
 
 -- Monitor principal: el DP-1.
 --
@@ -235,22 +227,12 @@ hl.device({
 -- funciona. Lo que NO funciona es pasar el comando como una variable
 -- sin comillas (hl.dsp.exec_cmd(brave) da error de sintaxis) ni
 -- escribirlo como codigo Lua suelto.
--- Ulauncher.
---
--- Se llama por D-Bus en vez de con el shim "ulauncher-toggle" del
--- paquete: ese shim acaba haciendo un "wmctrl -a" (X11) que en Wayland
--- no funciona, y su salida es un error ("Cannot get client list
--- properties") con codigo 1.
---
--- Ademas, el toggle por D-Bus de ulauncher 5.15.7 en Wayland no
--- oculta la ventana: la deja mapped pero invisible, y el siguiente
--- toggle tampoco la muestra. Por eso el script comprueba el estado y,
--- si hace falta, relanza el daemon.
---
--- El script alterna entre el toggle por D-Bus y relanzar ulauncher, que
--- es lo que si funciona de forma fiable.
-hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(
-    "sh ~/.config/hypr/ulauncher-toggle.sh"))
+-- Ulauncher: el shim "ulauncher-toggle" del paquete, que es como
+-- siempre se ha hecho. El error que suelta por consola ("Cannot get
+-- client list properties") viene del "wmctrl -a" que hace al final
+-- (X11, no funciona en Wayland) y es inofensivo: el toggle por D-Bus
+-- de antes ya ha hecho su trabajo.
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd("ulauncher-toggle"))
 -- Brave: el flag --no-sandbox lo pone el wrapper del paquete (el
 -- chrome-sandbox lleva el bit setuid, que el store de Nix no admite).
 hl.bind(seccMod .. " + B", hl.dsp.exec_cmd("brave"))
