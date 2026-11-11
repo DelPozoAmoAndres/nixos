@@ -83,6 +83,10 @@
     # polkit no pide permisos y falla en silencio.
     hyprpolkitagent
     ulauncher
+    # Lanzador de menus flotantes: lo usa el menu de apagado del boton
+    # de power del panel (dotfiles/wayle/power-menu.sh). Sin un lanzador
+    # de este tipo no hay forma de mostrar un menu en Wayland.
+    wofi
     nautilus
     pavucontrol
     kitty

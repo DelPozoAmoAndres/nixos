@@ -73,6 +73,19 @@ autostart("wayle panel start")
 -- Lanzador de aplicaciones.
 autostart("ulauncher --hide-window --no-window-shadow")
 
+-- Monitor principal: el DP-1.
+--
+-- Hyprland enfoca por defecto el monitor que esta en (0,0), que aqui es
+-- el HDMI-A-1 (el ultrawide). Se quiere el DP-1, asi que se enfoca
+-- explicitamente.
+--
+-- Se hace con un retardo de 1s porque al cargar el config los monitores
+-- aun se estan configuring y hl.dsp.focus({monitor=...}) no encuentra
+-- el DP-1 todavia.
+hl.timer(function()
+    hl.dispatch(hl.dsp.focus({ monitor = "DP-1" }))
+end, { timeout = 1000, type = "oneshot" })
+
 
 -------------------------------
 ---- VARIABLES DE ENTORNO ----

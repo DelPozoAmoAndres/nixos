@@ -22,11 +22,12 @@ location = "top"
 # Barra mas baja que la de HyprPanel: 45px frente a los ~53px del
 # default (padding = 0.35).
 #
-# El padding tiene un minimo util: por debajo de ~0.14 la barra queda
-# mas baja que el alto que necesitan los iconos y GTK4 vuelve a
-# deformarlos (el sintoma es el mismo de antes: iconos estirados en
-# vertical). Con los iconos de las apps en los workspaces, que ocupan
-# mas alto, el minimo esta algo mas arriba que sin ellos.
+# El padding tiene un minimo util de ~0.14: por debajo, la barra queda
+# mas baja que el alto que necesitan los iconos y GTK4 los deforma
+# (el sintoma es el mismo de antes: iconos estirados en vertical).
+# Con los iconos de las apps en los workspaces, que ocupan mas alto,
+# el minimo esta algo mas arriba que sin ellos.
+#
 #
 # IMPORTANTE - por que los sizes van a 1.0:
 #
@@ -45,7 +46,7 @@ location = "top"
 # Conclusion: la barra se achica con "padding" (que solo cambia el
 # grosor), nunca comprimiendo los iconos o el texto.
 scale = 1.0
-padding = 0.14
+padding = 0.12
 padding-ends = 0.4
 module-gap = 0.4
 exclusive = true
@@ -83,8 +84,10 @@ button-border-width = 0
 bg = "#00000000"
 
 # ─── Layout ────────────────────────────────────────────────────────────
+# La barra solo en el DP-1: el HDMI-A-1 (ultrawide 2560x1080) se queda
+# sin barra, dejando todo el espacio para las ventanas.
 [[bar.layout]]
-monitor = "*"
+monitor = "DP-1"
 left = [ "power", "separator", "window-title" ]
 center = [ "hyprland-workspaces" ]
 right = [
@@ -106,7 +109,10 @@ right = [
 # Definirla aqui daria conflicto de definicion con ese modulo.
 [styling]
 theme-provider = "wayle"
-scale = 0.9
+# scale a 1.0: con 0.9 (un valor fraccionario) GTK4 reescala los
+# pixmap de los iconos y salen deformados, igual que con
+# button-label-size. Es la unica escala fraccionaria que quedaba.
+scale = 1.0
 rounding = "sm"
 
 # ─── CPU ───────────────────────────────────────────────────────────────
@@ -116,7 +122,7 @@ rounding = "sm"
 # abajo, que se apoya en el script cpu-cores.sh.
 poll-interval-ms = 2000
 format = "{{ percent }}%"
-icon-name = "computer-symbolic"
+icon-name = "ld-cpu-symbolic"
 icon-show = false
 label-show = true
 label-color = "#cdd6f4"
@@ -142,7 +148,7 @@ poll-interval-ms = 2000
 # zram al 100% el swap ya no se llena por la次回ion, asi que el
 # porcentaje de RAM es el dato real de presion de memoria.
 format = "{{ percent }}%"
-icon-name = "drive-harddisk-symbolic"
+icon-name = "ld-memory-stick-symbolic"
 icon-show = false
 label-show = true
 label-color = "#cdd6f4"
@@ -159,13 +165,14 @@ above = 93
 label-color = "status-error"
 
 # ─── Volumen ───────────────────────────────────────────────────────────
-# Los iconos son los symbolic de Adwaita, no los "ld-*" de Lucide que
-# usaba wayle por defecto. Razon: los SVG de Lucide vienen con
-# width/height fijos y SIN viewBox, y GTK4 necesita el viewBox para
-# escalarlos a otro tamano. Con Adwaita (que si lo tiene) los iconos se
-# dibujan nitidos a cualquier escala.
+# Los iconos son los "ld-*" (Lucide) que trae el propio paquete de
+# wayle en share/icons/hicolor/. Es lo que espera wayle: sus SVG
+# declaran width/height en 16 y SIN viewBox, asi que GTK4 los dibuja a
+# su tamano natural. Usar iconos de otro tema (por ejemplo los symbolic
+# de Adwaita) los deforma: GTK4 los reescala el pixmap ya rasterizado
+# y salen estirados en vertical.
 [modules.volume]
-icon-name = "audio-volume-high-symbolic"
+icon-name = "ld-volume-2-symbolic"
 icon-show = true
 label-show = false
 format = "{{ percent }}%"
@@ -176,7 +183,7 @@ button-bg-color = "#00000000"
 
 # ─── Red ───────────────────────────────────────────────────────────────
 [modules.network]
-icon-name = "network-wireless-symbolic"
+icon-name = "ld-wifi-symbolic"
 icon-show = true
 label-show = false
 icon-color = "#cdd6f4"
@@ -185,7 +192,7 @@ button-bg-color = "#00000000"
 
 # ─── Bluetooth ─────────────────────────────────────────────────────────
 [modules.bluetooth]
-icon-name = "bluetooth-symbolic"
+icon-name = "ld-bluetooth-symbolic"
 icon-show = true
 label-show = false
 icon-color = "#cdd6f4"
@@ -194,9 +201,9 @@ button-bg-color = "#00000000"
 
 # ─── Notificaciones ────────────────────────────────────────────────────
 [modules.notifications]
-icon-name = "mail-unread-symbolic"
-icon-unread = "mail-unread-symbolic"
-icon-dnd = "mail-unread-symbolic"
+icon-name = "ld-bell-symbolic"
+icon-unread = "ld-bell-dot-symbolic"
+icon-dnd = "ld-bell-off-symbolic"
 icon-show = true
 # Sin el numero de notificaciones al lado del icono: solo la campana.
 # label-show = false lo esconde; el contador sigue visible en el menu
@@ -212,7 +219,7 @@ button-bg-color = "#00000000"
 # ─── Reloj ─────────────────────────────────────────────────────────────
 [modules.clock]
 format = "%H:%M"
-icon-name = "preferences-system-time-symbolic"
+icon-name = "tb-calendar-time-symbolic"
 icon-show = false
 label-show = true
 label-color = "#b4befe"
@@ -222,10 +229,16 @@ button-bg-color = "#00000000"
 
 # ─── Power ─────────────────────────────────────────────────────────────
 [modules.power]
-icon-name = "system-shutdown-symbolic"
+icon-name = "ld-power-symbolic"
 icon-color = "#cdd6f4"
 icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
+
+# El modulo power de wayle solo trae el icono: sin accion asignada el
+# click no hace nada (que es lo que pasaba antes). El menu de apagado,
+# reinicio, cierre de sesion y bloqueo lo monta power-menu.sh, que usa
+# wofi para el menu flotante.
+left-click = "$HOME/.config/wayle/power-menu.sh"
 
 # ─── Workspaces de Hyprland ────────────────────────────────────────────
 [modules.hyprland-workspaces]
@@ -252,7 +265,7 @@ label-color = "#cdd6f4"
 # ─── Titulo de ventana ─────────────────────────────────────────────────
 [modules.window-title]
 format = "{{ title }}"
-icon-name = "focus-windows-symbolic"
+icon-name = "ld-app-window-symbolic"
 icon-show = false
 label-show = true
 label-max-length = 60
@@ -281,6 +294,10 @@ mode = "poll"
 interval-ms = 2000
 format = "{{ output }}"
 tooltip-format = "Nucleos fisicos 0-3 (pares = hilos SMT del mismo nucleo)\n{{ output }}"
+# Sin icono: wayle pone uno por defecto (un monitor) y se ve mucho mas
+# grande que el resto de iconos de la barra. Este modulo ya se
+# identifica por su texto, que es la lista de uso por hilo.
+icon-show = false
 label-show = true
 label-max-length = 40
 label-color = "#cdd6f4"

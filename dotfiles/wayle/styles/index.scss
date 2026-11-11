@@ -1,0 +1,45 @@
+// Custom Wayle styles. Anything here overrides the built-in styling.
+// Use @import "name" to bring in _name.scss from this folder.
+
+//
+// Tamano de los iconos y del texto de la barra.
+//
+// Wayle calcula:
+//
+//   --bar-btn-icon-size:  calc( 1.6rem   * var(--bar-scale) * var(--bar-btn-icon-scale) )
+//   --bar-btn-label-size: calc( 1.04rem * var(--bar-scale) * var(--bar-btn-label-scale) )
+//
+// Con la fuente base de 13px eso da 20.8px para el icono y 13.52px para
+// la etiqueta: ninguno es un numero entero.
+//
+// GTK4 no re-renderiza: rasteriza el SVG (16x16, y en el caso de los
+// iconos de Lucide SIN viewBox) y la fuente a ese tamano, y si el
+// destino no es entero ESTIRA el pixmap. Un pixmap estirado en
+// vertical deja los iconos deformados (el altavoz parece una flecha y
+// el bluetooth una raya) y el texto con las letras afinadas.
+//
+// Aqui se fijan a 16px (icono) y 13px (etiqueta), que es su tamano
+// natural: se dibujan a 1:1 y salen nitidos.
+//
+// OJO: por eso los sizes del config.toml (button-icon-size,
+// button-label-size, styling.scale) tienen que ser 1.0. Cualquier valor
+// fraccionario multiplica estos valores y vuelve a estirar el pixmap.
+//
+// La barra se hace mas baja con bar.padding en el config.toml, nunca
+// comprimiendo los iconos.
+//
+button {
+    --bar-btn-icon-size: 16px;
+    --bar-btn-label-size: 13px;
+}
+
+// El texto del reloj y de los porcentajes sale con las letras afinadas
+// porque la fuente base de stylix es de 13px y el hinting de GTK
+// rasteriza con un factor que no cuadra. Con la fuente base a 12px el
+// texto se rasteriza limpio.
+window {
+    --text-base: 12px;
+    --text-sm: 11px;
+    --text-md: 12px;
+    --text-lg: 13px;
+}

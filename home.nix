@@ -181,6 +181,18 @@ in
       source = ./dotfiles/wayle/cpu-cores.sh;
       executable = true;
     };
+    # Menu de apagado del boton de power. El modulo "power" de wayle solo
+    # trae el icono: el menu (apagar, reiniciar, cerrar sesion, bloquear)
+    # lo trae HyprPanel y hay que montarlo a mano.
+    ".config/wayle/power-menu.sh" = {
+      source = ./dotfiles/wayle/power-menu.sh;
+      executable = true;
+    };
+    # CSS propio de wayle: fija el tamano de los iconos y del texto a
+    # valores enteros, que es lo que evita que GTK4 los deforme.
+    ".config/wayle/styles/index.scss" = {
+      source = ./dotfiles/wayle/styles/index.scss;
+    };
 
     # Limita la cache de fontconfig del usuario: con 74 GB de store, la del
     # home llegaba a 130 MB con 26.000 entradas de store paths ya borrados.
