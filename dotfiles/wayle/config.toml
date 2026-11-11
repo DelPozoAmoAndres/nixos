@@ -19,8 +19,14 @@
 [bar]
 location = "top"
 
-# Barra mas baja que la de HyprPanel: 43px frente a los ~53px del
+# Barra mas baja que la de HyprPanel: 45px frente a los ~53px del
 # default (padding = 0.35).
+#
+# El padding tiene un minimo util: por debajo de ~0.14 la barra queda
+# mas baja que el alto que necesitan los iconos y GTK4 vuelve a
+# deformarlos (el sintoma es el mismo de antes: iconos estirados en
+# vertical). Con los iconos de las apps en los workspaces, que ocupan
+# mas alto, el minimo esta algo mas arriba que sin ellos.
 #
 # IMPORTANTE - por que los sizes van a 1.0:
 #
@@ -39,7 +45,7 @@ location = "top"
 # Conclusion: la barra se achica con "padding" (que solo cambia el
 # grosor), nunca comprimiendo los iconos o el texto.
 scale = 1.0
-padding = 0.05
+padding = 0.14
 padding-ends = 0.4
 module-gap = 0.4
 exclusive = true
@@ -192,7 +198,10 @@ icon-name = "mail-unread-symbolic"
 icon-unread = "mail-unread-symbolic"
 icon-dnd = "mail-unread-symbolic"
 icon-show = true
-label-show = true
+# Sin el numero de notificaciones al lado del icono: solo la campana.
+# label-show = false lo esconde; el contador sigue visible en el menu
+# de notificaciones (el dropdown), que es donde se consulta.
+label-show = false
 icon-color = "#cdd6f4"
 icon-bg-color = "#00000000"
 label-color = "#b4befe"
@@ -228,7 +237,11 @@ display-mode = "label"
 label-use-name = false
 numbering = "absolute"
 divider = " "
-app-icons-show = false
+
+# Iconos de las aplicaciones abiertas en cada workspace: se ve de un
+# vistazo que hay en cada uno. Con app-icons-dedupe se muestra una sola
+# vez por aplicacion aunque tenga varias ventanas.
+app-icons-show = true
 app-icons-dedupe = true
 app-icons-empty = "tb-minus-symbolic"
 icon-gap = 0.3
