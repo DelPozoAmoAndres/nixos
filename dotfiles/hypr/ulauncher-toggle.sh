@@ -2,60 +2,64 @@
 #
 # Muestra u oculta la ventana de ulauncher.
 #
-# POR QUE HACE FALTA ESTE SCRIPT:
+# POR QUE NO SE USA "dbus-send" A PELO:
 #
-# El shim "ulauncher-toggle" del paquete llama al toggle por D-Bus y
-# luego hace un "wmctrl -a" (X11) que en Wayland no funciona. El error
-# que sale por consola ("Cannot get client list properties") viene de ahi
-# y es inofensivo: el toggle de antes ya ha hecho su trabajo.
+# El shim "ulauncher-toggle" del paquete (dbus-send + sleep 0.03 +
+# wmctrl -a) es lo que alterna bien. Con solo dbus-send el toggle se
+# aplica pero la ventana se queda visible: no llega a completarse.
 #
-# El problema es otro: si el daemon de ulauncher ha muerto (hace
-# SIGSEGV de vez en cuando con Python 3.14, se ve en coredumpctl), el
-# toggle no tiene a quien preguntar por D-Bus y no hace nada, sin error
-# visible. Esto lo relanza.
+# El error que el shim saca por consola ("Cannot get client list
+# properties") viene del "wmctrl -a" final (X11, que en Wayland no
+# encuentra la ventana) y es INOFENSIVO: el toggle de antes ya ha hecho
+# su trabajo.
 #
-# NO se mata el proceso en el caso normal: solo si el daemon no
-# responde, que es cuando esta muerto de verdad.
+# QUE SE ANADE AQUI:
+#
+# Si el daemon de ulauncher ha muerto (hace SIGSEGV a veces con Python
+# 3.14, se ve en coredumpctl), el shim no tiene a quien preguntar por
+# D-Bus y no hace nada, sin error visible. Esto lo relanza.
+#
+# No se puede comprobar si el daemon vive con dbus-send: cuando el
+# proceso muere, el nombre del bus sigue registrado y dbus-send sale con
+# codigo 0. Hay que mirar al proceso (con el prefijo del wrapper de
+# Nix: ".ulauncher-wrap").
 
 set -u
 
-destino="net.launchpad.ulauncher"
-ruta="/net/launchpad/ulauncher"
-metodo="net.launchpad.ulauncher.toggle_window"
-
 # El daemon vive?
-#
-# No vale con mirar si dbus-send responde: cuando el proceso de
-# ulauncher muere (hace SIGSEGV a veces), el nombre del bus queda
-# registrado y dbus-send sigue saliendo con codigo 0, asi que daria
-# "todo bien" con el daemon muerto.
-#
-# Hay que mirar al proceso de verdad. El nombre real incluye el
-# prefijo del wrapper de Nix: ".ulauncher-wrap".
-if pgrep -x ".ulauncher-wrap" >/dev/null 2>&1; then
-    # El daemon vive: se le pide el toggle.
-    dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1
+if ! pgrep -x ".ulauncher-wrap" >/dev/null 2>&1; then
+    # Esta muerto (crash). Se relanza. Se lanza SIN --hide-window
+    # porque con ese flag la ventana nunca se crea y el toggle no
+    # tendria nada que mostrar.
+    pkill -x ulauncher 2>/dev/null || true
+    pkill -x .ulauncher-wrap 2>/dev/null || true
+    sleep 0.3
+
+    ulauncher --no-window-shadow >/dev/null 2>&1 &
+
+    # Se espera a que la ventana exista.
+    for _ in $(seq 1 40); do
+        sleep 0.25
+        if hyprctl clients -j 2>/dev/null | grep -q '"ulauncher"'; then
+            break
+        fi
+    done
+
+    # Y se espera a que se asiente antes de ocultarla.
+    sleep 1
+
+    # Se oculta con el toggle, para dejar el daemon en el estado en el
+    # que el atajo alterna de forma instantanea.
+    ulauncher-toggle >/dev/null 2>&1
+
+    # Y se vuelve a mostrar: el usuario ha pulsado el atajo, lo que
+    # espera es ver la ventana, no tener que pulsar dos veces.
+    sleep 0.3
+    ulauncher-toggle >/dev/null 2>&1
     exit 0
 fi
 
-# No responde: el daemon esta muerto. Se relanza.
-#
-# Se lanza SIN --hide-window porque con ese flag la ventana nunca se
-# crea y el toggle no tendria nada que mostrar. Se oculta despues con
-# un toggle, dejando el daemon vivo con la ventana creada (que es el
-# estado en el que el atajo alterna de forma instantanea).
-pkill -x ulauncher 2>/dev/null || true
-pkill -x .ulauncher-wrap 2>/dev/null || true
-sleep 0.3
-
-ulauncher --no-window-shadow >/dev/null 2>&1 &
-
-# Se espera a que se registre en D-Bus y se oculta la ventana.
-for _ in $(seq 1 24); do
-    sleep 0.25
-    if dbus-send --session --dest="$destino" "$ruta" "$metodo" >/dev/null 2>&1; then
-        break
-    fi
-done
+# El daemon vive: el toggle de siempre.
+ulauncher-toggle >/dev/null 2>&1
 
 exit 0

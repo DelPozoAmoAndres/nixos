@@ -73,12 +73,9 @@ done
 # medio construir y no hace nada.
 sleep 1.5
 
-# Se oculta con el shim del paquete, que es el que alterna bien: hace el
-# toggle por D-Bus, espera, y luego el "wmctrl -a" (que en Wayland no
-# funciona pero no molesta).
-#
-# Con "dbus-send" a pelo el toggle no llega a aplicarse: es asincrono y
-# hay que darle margen.
+# Se oculta con el shim del paquete, que es el que alterna bien. Con
+# "dbus-send" a pelo el toggle se aplica pero la ventana se queda
+# visible: no llega a completarse.
 #
 # OJO: solo se hace un toggle si la ventana esta VISIBLE. Si ya esta
 # oculta (no hay ventana), un toggle la mostraria, que es justo lo

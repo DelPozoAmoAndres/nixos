@@ -486,9 +486,11 @@ Medido: **42-45ms** por pulsacion.
 
 Detalles no triviales:
 
-- El toggle por D-Bus a pelo (`dbus-send` sin `--print-reply`) si
-  funciona, pero es **asincrono**: hace falta un margen (`sleep 0.03`
-  en el shim del paquete) para que se aplique.
+- **El toggle por D-Bus a pelo no basta**: con `dbus-send` a secas el
+  toggle se aplica pero la ventana se queda visible (no llega a
+  completarse). El shim del paquete (`dbus-send` + `sleep 0.03` +
+  `wmctrl -a`) es lo que alterna bien, asi que se usa el shim tal cual
+  y lo unico que se anade es el relanzado si el daemon ha muerto.
 - **No se puede comprobar si el daemon vive con `dbus-send`**: cuando el
   proceso muere (SIGSEGV), el nombre del bus sigue registrado y
   `dbus-send` sale con codigo 0. Hay que mirar al proceso
