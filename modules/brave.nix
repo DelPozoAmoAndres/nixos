@@ -41,10 +41,47 @@ let
     # Es un setup-hook: se aplica SOLO al final de la fase de
     # instalacion via fixupOutputHooks, no hace falta invocarlo a mano
     # desde installPhase (su funcion es wrapGAppsHook, con "A" mayuscula).
+    #
+    # Ademas necesita las librerias del sistema en propagatedBuildInputs
+    # porque el hook las enlaza en el wrapper: sin ellas el binario
+    # arranca pero muere con "libglib-2.0.so.0: cannot open shared
+    # object file" (el .deb las trae enlazadas contra /usr/lib, que en
+    # Nix no existe).
     nativeBuildInputs = [ pkgs.dpkg pkgs.makeWrapper pkgs.wrapGAppsHook3 ];
+
+    propagatedBuildInputs = with pkgs; [
+      alsa-lib
+      at-spi2-atk
+      at-spi2-core
+      atk
+      cairo
+      cups
+      dbus
+      expat
+      gdk-pixbuf
+      glib
+      gtk3
+      libdrm
+      libGL
+      libglvnd
+      libxkbcommon
+      libx11
+      libxcb
+      libxext
+      nspr
+      nss
+      pango
+      pipewire
+      pulseaudio
+      snappy
+      udev
+      util-linux
+      wayland
+      xdg-utils
+    ];
+
     dontConfigure = true;
     dontBuild = true;
-    dontPatchELF = true;
     dontStrip = true;
 
     installPhase = ''

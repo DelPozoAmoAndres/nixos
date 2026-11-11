@@ -18,25 +18,54 @@
 # ─── Barra ─────────────────────────────────────────────────────────────
 [bar]
 location = "top"
+
+# Barra mas baja que la de HyprPanel: 43px frente a los ~53px del
+# default (padding = 0.35).
+#
+# IMPORTANTE - por que los sizes van a 1.0:
+#
+# Wayle escala la fila de botones como un todo cuando button-label-size
+# (o button-icon-size) lleva un valor FRACCIONARIO. GTK4 no re-renderiza
+# los SVG: reescala el pixmap ya rasterizado, y un pixmap estirado en
+# vertical deja los iconos deformados (el altavoz parece una flecha y
+# el bluetooth una raya).
+#
+# Se perdio tiempo buscando la causa en el SVG (los iconos de Lucide
+# vienen sin viewBox, que tambien deforman) y en el button-variant,
+# pero el culpable era el label-size fraccionario: con
+# button-label-size = 1.0 los iconos se ven perfectos a cualquier
+# altura de barra.
+#
+# Conclusion: la barra se achica con "padding" (que solo cambia el
+# grosor), nunca comprimiendo los iconos o el texto.
 scale = 1.0
-padding = 0.35
-padding-ends = 0.5
-module-gap = 0.5
+padding = 0.05
+padding-ends = 0.4
+module-gap = 0.4
 exclusive = true
 layer = "top"
-background-opacity = 100
+
+# Transparente: en HyprPanel era "theme.bar.transparent = true", con el
+# fondo de la barra a rgba(0,0,0,0). Aqui background-opacity = 0 deja
+# la barra sin fondo, dejando ver el wallpaper.
+background-opacity = 0
 rounding = "none"
 shadow = "none"
 
 # Botones: sin bordes, sin fondo, texto plano. Es el estilo plano que
 # tenia HyprPanel (todo con rgba(0,0,0,0) de fondo).
+#
 button-variant = "block-prefix"
 button-opacity = 100
 button-bg-opacity = 0
+
+# Todos los sizes a 1.0 (ver la nota de arriba): bajar cualquiera de
+# ellos deforma los iconos. 1.0 son 16px, el tamaño natural del SVG
+# symbolic.
 button-icon-size = 1.0
+button-icon-padding = 1.0
 button-label-size = 1.0
-button-label-weight = "semibold"
-button-label-padding = 0.2
+button-label-padding = 1.0
 button-rounding = "none"
 button-gap = 0.4
 button-icon-position = "start"
@@ -44,6 +73,7 @@ button-border-location = "none"
 button-border-width = 0
 
 [bar.colors]
+# Fondo totalmente transparente.
 bg = "#00000000"
 
 # ─── Layout ────────────────────────────────────────────────────────────
@@ -70,7 +100,7 @@ right = [
 # Definirla aqui daria conflicto de definicion con ese modulo.
 [styling]
 theme-provider = "wayle"
-scale = 1.0
+scale = 0.9
 rounding = "sm"
 
 # ─── CPU ───────────────────────────────────────────────────────────────
@@ -80,23 +110,23 @@ rounding = "sm"
 # abajo, que se apoya en el script cpu-cores.sh.
 poll-interval-ms = 2000
 format = "{{ percent }}%"
-icon-name = "ld-cpu-symbolic"
+icon-name = "computer-symbolic"
 icon-show = false
 label-show = true
 label-color = "#cdd6f4"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
-# Thresholds de color: verde bajo, amarillo a partir del 60%, rojo a
-# partir del 85%. Antes esto no era posible: HyprPanel solo sabia
-# mostrar el numero sin color segun la carga.
+# Thresholds de color: solo tintan la ETIQUETA cuando la carga es alta
+# (el icono se queda blanco, como en HyprPanel). HyprPanel no podia
+# hacer esto: solo mostraba el numero sin color segun la carga.
 [[modules.cpu.thresholds]]
 above = 60
-icon-color = "status-warning"
 label-color = "status-warning"
 
 [[modules.cpu.thresholds]]
 above = 85
-icon-color = "status-error"
 label-color = "status-error"
 
 # ─── RAM ───────────────────────────────────────────────────────────────
@@ -106,50 +136,66 @@ poll-interval-ms = 2000
 # zram al 100% el swap ya no se llena por la次回ion, asi que el
 # porcentaje de RAM es el dato real de presion de memoria.
 format = "{{ percent }}%"
-icon-name = "ld-memory-stick-symbolic"
+icon-name = "drive-harddisk-symbolic"
 icon-show = false
 label-show = true
-label-color = "#f9e2af"
+label-color = "#cdd6f4"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 [[modules.ram.thresholds]]
 above = 80
-icon-color = "status-warning"
 label-color = "status-warning"
 
 [[modules.ram.thresholds]]
 above = 93
-icon-color = "status-error"
 label-color = "status-error"
 
 # ─── Volumen ───────────────────────────────────────────────────────────
+# Los iconos son los symbolic de Adwaita, no los "ld-*" de Lucide que
+# usaba wayle por defecto. Razon: los SVG de Lucide vienen con
+# width/height fijos y SIN viewBox, y GTK4 necesita el viewBox para
+# escalarlos a otro tamano. Con Adwaita (que si lo tiene) los iconos se
+# dibujan nitidos a cualquier escala.
 [modules.volume]
-icon-name = "ld-volume-high-symbolic"
+icon-name = "audio-volume-high-symbolic"
 icon-show = true
 label-show = false
 format = "{{ percent }}%"
 label-color = "#cdd6f4"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Red ───────────────────────────────────────────────────────────────
 [modules.network]
+icon-name = "network-wireless-symbolic"
 icon-show = true
 label-show = false
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Bluetooth ─────────────────────────────────────────────────────────
 [modules.bluetooth]
+icon-name = "bluetooth-symbolic"
 icon-show = true
 label-show = false
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Notificaciones ────────────────────────────────────────────────────
 [modules.notifications]
-icon-name = "ld-bell-symbolic"
-icon-unread = "ld-bell-dot-symbolic"
-icon-dnd = "ld-bell-off-symbolic"
+icon-name = "mail-unread-symbolic"
+icon-unread = "mail-unread-symbolic"
+icon-dnd = "mail-unread-symbolic"
 icon-show = true
 label-show = true
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
+label-color = "#b4befe"
 popup-position = "top-right"
 popup-duration = 5000
 button-bg-color = "#00000000"
@@ -157,15 +203,18 @@ button-bg-color = "#00000000"
 # ─── Reloj ─────────────────────────────────────────────────────────────
 [modules.clock]
 format = "%H:%M"
-icon-name = "tb-calendar-time-symbolic"
+icon-name = "preferences-system-time-symbolic"
 icon-show = false
 label-show = true
 label-color = "#b4befe"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Power ─────────────────────────────────────────────────────────────
 [modules.power]
-icon-name = "ld-power-symbolic"
+icon-name = "system-shutdown-symbolic"
+icon-color = "#cdd6f4"
 icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
@@ -184,15 +233,19 @@ app-icons-dedupe = true
 app-icons-empty = "tb-minus-symbolic"
 icon-gap = 0.3
 workspace-padding = 0.5
+icon-color = "#cdd6f4"
+label-color = "#cdd6f4"
 
 # ─── Titulo de ventana ─────────────────────────────────────────────────
 [modules.window-title]
 format = "{{ title }}"
-icon-name = "ld-app-window-symbolic"
+icon-name = "focus-windows-symbolic"
 icon-show = false
 label-show = true
 label-max-length = 60
 label-color = "#cdd6f4"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Separador ─────────────────────────────────────────────────────────
@@ -217,3 +270,7 @@ format = "{{ output }}"
 tooltip-format = "Nucleos fisicos 0-3 (pares = hilos SMT del mismo nucleo)\n{{ output }}"
 label-show = true
 label-max-length = 40
+label-color = "#cdd6f4"
+icon-color = "#cdd6f4"
+icon-bg-color = "#00000000"
+button-bg-color = "#00000000"

@@ -233,15 +233,17 @@ in
   services.wayle = {
     enable = true;
     autoInstallDependencies = false;
-    # La paleta viene del TOML del repo, pero el modulo de nixpkgs
-    # (wayle/hm.nix) tambien define una por defecto, y el merge de dos
-    # valores escalares da conflicto. mkForce hace que gane la del repo:
-    # el TOML es la fuente de verdad.
+    # El TOML del repo es la fuente de verdad. El modulo de nixpkgs
+    # (wayle/hm.nix) define sus propios valores por defecto (la paleta
+    # desde stylix y bar.background-opacity desde stylix.opacity), y el
+    # merge de dos escalares da conflicto.
+    #
+    # mkForce sobre TODOS los valores del TOML hace que gane siempre el
+    # repo. Sin esto, ademas del conflicto de la paleta, al poner
+    # background-opacity = 0 (barra transparente) el modulo de nixpkgs
+    # lo sobreescribiria con 100.
     settings = lib.mapAttrs
-      (name: value:
-        if name == "palette" then
-          lib.mapAttrs (_: v: lib.mkForce v) value
-        else value)
+      (_: lib.mapAttrs (_: lib.mkForce))
       (builtins.fromTOML (builtins.readFile ./dotfiles/wayle/config.toml));
   };
 
