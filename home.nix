@@ -174,20 +174,6 @@ in
     # el servicio de usuario. Se usa settings (no un fichero suelto) para
     # que el TOML se genere con el formato correcto.
     #
-    # El script cpu-cores.sh va aparte como fichero: wayle lo invoca
-    # como comando externo y necesita permiso de ejecucion, cosa que un
-    # fichero generado por home-manager no garantiza.
-    ".config/wayle/cpu-cores.sh" = {
-      source = ./dotfiles/wayle/cpu-cores.sh;
-      executable = true;
-    };
-    # Menu de apagado del boton de power. El modulo "power" de wayle solo
-    # trae el icono: el menu (apagar, reiniciar, cerrar sesion, bloquear)
-    # lo trae HyprPanel y hay que montarlo a mano.
-    ".config/wayle/power-menu.sh" = {
-      source = ./dotfiles/wayle/power-menu.sh;
-      executable = true;
-    };
     # CSS propio de wayle: fija el tamano de los iconos y del texto a
     # valores enteros, que es lo que evita que GTK4 los deforme.
     ".config/wayle/styles/index.scss" = {
@@ -245,6 +231,10 @@ in
   services.wayle = {
     enable = true;
     autoInstallDependencies = false;
+    # El paquete parcheado (fix de sqlite + viewBox de los iconos). El
+    # modulo de home-manager usaria su propio pkgs.wayle, que no esta
+    # parcheado y falla al compilar. Ver modules/wayle-patched.nix.
+    package = import ./modules/wayle-patched.nix { inherit pkgs; };
     # El TOML del repo es la fuente de verdad. El modulo de nixpkgs
     # (wayle/hm.nix) define sus propios valores por defecto (la paleta
     # desde stylix y bar.background-opacity desde stylix.opacity), y el

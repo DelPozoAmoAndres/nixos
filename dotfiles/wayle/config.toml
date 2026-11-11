@@ -1,19 +1,23 @@
 ########################################################################
-# Wayle — sustituto de HyprPanel (archivado en nixpkgs).
+# Wayle - sustituto de HyprPanel (archivado en nixpkgs).
 #
-# Replica el layout de la config.json de HyprPanel:
-#   left   : power, separator, window-title
-#   center : workspaces
-#   right  : cpu, ram, volume, network, bluetooth, notifications, clock
+# Layout actual (simplificado respecto al de HyprPanel):
+#   left   : dashboard, separator, window-title
+#   center : hyprland-workspaces
+#   right  : volume, network, bluetooth, notifications, clock
 #
-# Mejoras sobre HyprPanel:
-#   - CPU y RAM son modulos NATIVOS (no placeholders): incluyen
-#     temperatura, frecuencia y thresholds de color por carga.
-#   - Wayle esta escrito en Rust con GTK4: consume mucha menos RAM que
-#     HyprPanel (que es GTK/JS con un motor web entero por debajo).
-#   - Wayle tiene un modulo "custom" que ejecuta un comando de shell, lo
-#     que permite meter el CPU por nucleo (ver custom-cpu-cores).
-########################################################################
+# CPU y RAM se han quitado de la barra: el dropdown del boton de
+# dashboard muestra las estadisticas del sistema, asi que en la barra
+# eran redundantes. La red y el bluetooth se quedan, que se consulta
+# a menudo.
+#
+# El boton de dashboard sustituye al de power de HyprPanel: el modulo
+# "power" de wayle solo trae el icono y su click no hace nada, mientras
+# que el dashboard trae un menu nativo con apagar, reiniciar, cerrar
+# sesion y bloquear.
+#
+# Wayle esta escrito en Rust con GTK4: consume mucha menos RAM que
+# HyprPanel (que era GTK/JS con un motor web entero por debajo).
 
 # ─── Barra ─────────────────────────────────────────────────────────────
 [bar]
@@ -48,7 +52,7 @@ location = "top"
 scale = 1.0
 padding = 0.12
 padding-ends = 0.4
-module-gap = 0.4
+module-gap = 0.5
 exclusive = true
 layer = "top"
 
@@ -75,6 +79,12 @@ button-label-size = 1.0
 button-label-padding = 1.0
 button-rounding = "none"
 button-gap = 0.4
+
+# Gap DENTRO del grupo de la derecha (los iconos): es el que separa
+# los iconos entre si. El group-module-gap (0.25 por defecto) es
+# mayor que el module-gap de la barra, asi que sin esto los iconos
+# salen mas separados que el resto de la barra.
+button-group-module-gap = 0.05
 button-icon-position = "start"
 button-border-location = "none"
 button-border-width = 0
@@ -86,17 +96,19 @@ bg = "#00000000"
 # ─── Layout ────────────────────────────────────────────────────────────
 # La barra solo en el DP-1: el HDMI-A-1 (ultrawide 2560x1080) se queda
 # sin barra, dejando todo el espacio para las ventanas.
+#
+# El menu de sesion (apagar, reiniciar, cerrar sesion, bloquear) lo pone
+# el modulo "dashboard" de wayle, que es NATIVO: el modulo "power" solo
+# trae el icono y su click no hace nada por defecto.
 [[bar.layout]]
 monitor = "DP-1"
-left = [ "power", "separator", "window-title" ]
+left = [ "dashboard", "separator", "window-title" ]
 center = [ "hyprland-workspaces" ]
 right = [
-    "cpu",
-    "ram",
-    "volume",
-    "network",
-    "bluetooth",
-    "notifications",
+    # Los iconos van en un grupo para poder juntarlos entre si
+    # (button-group-module-gap) sin que el reloj se pegue a ellos: el
+    # reloj va suelto y lo separa el module-gap de la barra.
+    { name = "status", modules = [ "volume", "network", "bluetooth", "notifications" ] },
     "clock",
 ]
 
@@ -114,55 +126,6 @@ theme-provider = "wayle"
 # button-label-size. Es la unica escala fraccionaria que quedaba.
 scale = 1.0
 rounding = "sm"
-
-# ─── CPU ───────────────────────────────────────────────────────────────
-[modules.cpu]
-# El modulo nativo de CPU muestra el porcentaje TOTAL de los 8 hilos.
-# Para el detalle por nucleo esta el modulo custom "cpu-cores" de mas
-# abajo, que se apoya en el script cpu-cores.sh.
-poll-interval-ms = 2000
-format = "{{ percent }}%"
-icon-name = "ld-cpu-symbolic"
-icon-show = false
-label-show = true
-label-color = "#cdd6f4"
-icon-color = "#cdd6f4"
-icon-bg-color = "#00000000"
-button-bg-color = "#00000000"
-
-# Thresholds de color: solo tintan la ETIQUETA cuando la carga es alta
-# (el icono se queda blanco, como en HyprPanel). HyprPanel no podia
-# hacer esto: solo mostraba el numero sin color segun la carga.
-[[modules.cpu.thresholds]]
-above = 60
-label-color = "status-warning"
-
-[[modules.cpu.thresholds]]
-above = 85
-label-color = "status-error"
-
-# ─── RAM ───────────────────────────────────────────────────────────────
-[modules.ram]
-poll-interval-ms = 2000
-# Se muestra el porcentaje y, en el tooltip, el detalle de swap. Con el
-# zram al 100% el swap ya no se llena por la次回ion, asi que el
-# porcentaje de RAM es el dato real de presion de memoria.
-format = "{{ percent }}%"
-icon-name = "ld-memory-stick-symbolic"
-icon-show = false
-label-show = true
-label-color = "#cdd6f4"
-icon-color = "#cdd6f4"
-icon-bg-color = "#00000000"
-button-bg-color = "#00000000"
-
-[[modules.ram.thresholds]]
-above = 80
-label-color = "status-warning"
-
-[[modules.ram.thresholds]]
-above = 93
-label-color = "status-error"
 
 # ─── Volumen ───────────────────────────────────────────────────────────
 # Los iconos son los "ld-*" (Lucide) que trae el propio paquete de
@@ -228,17 +191,28 @@ icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
 # ─── Power ─────────────────────────────────────────────────────────────
-[modules.power]
-icon-name = "ld-power-symbolic"
+# ─── Dashboard (menu de sesion) ────────────────────────────────────────
+# El modulo "dashboard" de wayle trae un dropdown NATIVO con apagar,
+# reiniciar, cerrar sesion y bloquear, mas un resumen del sistema y el
+# control de audio. Es lo que sustituye al boton de power de HyprPanel.
+#
+# El boton "power" se deja sin usar: ese modulo solo trae el icono y su
+# click no hace nada (ClickAction::None por defecto).
+[modules.dashboard]
+# El dropdown se abre con el click izquierdo.
+left-click = "dropdown:dashboard"
 icon-color = "#cdd6f4"
 icon-bg-color = "#00000000"
 button-bg-color = "#00000000"
 
-# El modulo power de wayle solo trae el icono: sin accion asignada el
-# click no hace nada (que es lo que pasaba antes). El menu de apagado,
-# reinicio, cierre de sesion y bloqueo lo monta power-menu.sh, que usa
-# wofi para el menu flotante.
-left-click = "$HOME/.config/wayle/power-menu.sh"
+# Comandos del menu de sesion. Los de wayle por defecto son correctos
+# salvo el logout: usa $XDG_SESSION_ID, que en una sesion de Hyprland
+# iniciada desde getty puede no estar definido. Con loginctl
+# terminate-user se cierra la sesion entera, que es lo que se quiere.
+dropdown-poweroff-command = "systemctl poweroff"
+dropdown-reboot-command = "systemctl reboot"
+dropdown-logout-command = "loginctl terminate-user \"$(whoami)\""
+dropdown-lock-command = "hyprlock"
 
 # ─── Workspaces de Hyprland ────────────────────────────────────────────
 [modules.hyprland-workspaces]
@@ -279,28 +253,3 @@ button-bg-color = "#00000000"
 size = 1
 length = 1.5
 color = "#585b70"
-
-# ─── CPU por nucleo ────────────────────────────────────────────────────
-# Modulo custom que ejecuta cpu-cores.sh, que lee /proc/stat y devuelve
-# el uso de cada uno de los 8 hilos (4 nucleos fisicos con SMT).
-#
-# Es la forma de ver el detalle por core que HyprPanel no podia dar: su
-# modulo de CPU era un placeholder que solo leia el agregado de
-# /proc/stat.
-[[modules.custom]]
-id = "cpu-cores"
-command = "$HOME/.config/wayle/cpu-cores.sh"
-mode = "poll"
-interval-ms = 2000
-format = "{{ output }}"
-tooltip-format = "Nucleos fisicos 0-3 (pares = hilos SMT del mismo nucleo)\n{{ output }}"
-# Sin icono: wayle pone uno por defecto (un monitor) y se ve mucho mas
-# grande que el resto de iconos de la barra. Este modulo ya se
-# identifica por su texto, que es la lista de uso por hilo.
-icon-show = false
-label-show = true
-label-max-length = 40
-label-color = "#cdd6f4"
-icon-color = "#cdd6f4"
-icon-bg-color = "#00000000"
-button-bg-color = "#00000000"

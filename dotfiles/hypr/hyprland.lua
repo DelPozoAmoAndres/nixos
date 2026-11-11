@@ -46,11 +46,12 @@ hl.monitor({
 -- polkit. Lanzarlos aqui los hace idempotentes: si ya estan corriendo
 -- no se duplican.
 --
--- Se usa "sh -c '... &' &" para que el proceso se desligue del shell:
--- hl.exec_cmd espera a que el comando termine, y hyprpaper y ulauncher
--- son daemons que no terminan nunca.
+-- Hyprland ejecuta el comando en segundo plano (spawnRawProc), asi que
+-- NO hace falta un "&": con el, el shell terminaba y mataba al hijo
+-- (hyprpaper, ulauncher y el agente de polkit morian nada mas arrancar,
+-- y sin ellos no habia ni wallpaper ni atajos de la barra).
 local function autostart(cmd)
-    hl.exec_cmd("sh -c '" .. cmd .. " >/dev/null 2>&1 &'")
+    hl.exec_cmd(cmd .. " >/dev/null 2>&1")
 end
 
 -- Puente del socket IPC de Hyprland 0.55 (lo movio a <instancia>/
@@ -58,13 +59,15 @@ end
 -- socket). Sin esto los clics de la barra no responden.
 autostart("sh ~/.config/hypr/ipc-compat.sh")
 
--- Fondo de pantalla. hyprpaper lee su config de ~/.config/hypr/
--- hyprpaper.conf y se queda en primer plano, por eso el "&".
-autostart("hyprpaper")
+-- Fondo de pantalla. Se le pasa el config explicitamente: hyprpaper
+-- lo busca en el directorio de config de Hyprland, pero si se ejecuta
+-- antes de que ese directorio exista (o con otro HOME) no lo
+-- encuentra y se queda sin wallpaper.
+autostart("hyprpaper --config ~/.config/hypr/hyprpaper.conf")
 
--- Agente de autorizacion de polkit: sin el, montar discos o pedir
--- permisos falla en silencio.
-autostart("hyprpolkitagent")
+-- El agente de polkit lo arranca su propio servicio de systemd de
+-- usuario (hyprpolkitagent.service): el binario esta en libexec/ y no
+-- en el PATH, asi que lanzarlo desde aqui no funciona.
 
 -- Panel (Wayle, sustituye a HyprPanel). El servicio de usuario de
 -- home-manager ya lo levanta; esta linea es el respaldo.
@@ -200,6 +203,8 @@ hl.device({
 -- sin comillas (hl.dsp.exec_cmd(brave) da error de sintaxis) ni
 -- escribirlo como codigo Lua suelto.
 hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd("ulauncher-toggle"))
+-- Brave: el flag --no-sandbox lo pone el wrapper del paquete (el
+-- chrome-sandbox lleva el bit setuid, que el store de Nix no admite).
 hl.bind(seccMod .. " + B", hl.dsp.exec_cmd("brave"))
 hl.bind(seccMod .. " + D", hl.dsp.exec_cmd("vesktop"))
 hl.bind(seccMod .. " + S", hl.dsp.exec_cmd("steam"))

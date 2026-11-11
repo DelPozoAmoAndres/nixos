@@ -1,9 +1,36 @@
 { config, lib, pkgs, inputs, ... }:
 
+let
+  # Wayle parcheado (fix de sqlite + viewBox de los iconos).
+  # Ver modules/wayle-patched.nix para el detalle.
+  waylePatched = import ./wayle-patched.nix { inherit pkgs; };
+in
 {
   programs.hyprland = {
     enable = true;
     xwayland.enable = true;
+  };
+
+  # ─── Agente de autorizacion de polkit ───────────────────────────────────
+  #
+  # El paquete hyprpolkitagent trae el ejecutable en libexec/ y un
+  # servicio de systemd de usuario (hyprpolkitagent.service). El
+  # servicio es la forma correcta de lanzarlo: el binario no esta en
+  # $PATH (esta en libexec/), asi que lanzarlo a mano desde el autostart
+  # de Hyprland no funciona.
+  #
+  # Sin el, montar discos o pedir permisos de polkit falla en silencio.
+  systemd.user.services.hyprpolkitagent = {
+    description = "Agente de autorizacion de polkit para Hyprland";
+    after = [ "graphical-session-pre.target" ];
+    partOf = [ "graphical-session.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.hyprpolkitagent}/libexec/hyprpolkitagent";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+    wantedBy = [ "graphical-session.target" ];
   };
 
   # ─── Tema ──────────────────────────────────────────────────────────────
@@ -79,14 +106,7 @@
     # Sin esto el perfil del sistema no tiene share/glib-2.0/schemas y GTK
     # dibuja cuadrados en vez de iconos (Nautilus,菜单, emblemas).
     gsettings-desktop-schemas
-    # Agente de autorizacion: sin el, montar discos o hacer cambios de
-    # polkit no pide permisos y falla en silencio.
-    hyprpolkitagent
     ulauncher
-    # Lanzador de menus flotantes: lo usa el menu de apagado del boton
-    # de power del panel (dotfiles/wayle/power-menu.sh). Sin un lanzador
-    # de este tipo no hay forma de mostrar un menu en Wayland.
-    wofi
     nautilus
     pavucontrol
     kitty
@@ -99,7 +119,13 @@
     # Rust con GTK4: mucho mas ligero (HyprPanel era GTK/JS con un motor
     # web entero debajo) y con modulos NATIVOS de CPU y RAM, que en
     # HyprPanel eran placeholders sin lectura real por nucleo.
-    wayle
+    #
+    # Se usa la version parcheada (fix de sqlite + viewBox de los
+    # iconos), definida mas arriba en este modulo.
+    #
+    # OJO: dentro de "with pkgs;" el nombre "wayle" resolveria al
+    # paquete SIN parchear, asi que el parcheado se llama distinto.
+    waylePatched
     (pkgs.writeShellScriptBin "hyprexit" ''
       ${pkgs.hyprland}/bin/hyprctl dispatch exit
       ${pkgs.systemd}/bin/loginctl terminate-user "pozito"

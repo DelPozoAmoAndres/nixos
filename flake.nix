@@ -92,7 +92,13 @@
               }
             ];
 
-            nixpkgs.overlays = [];
+            # NO hace falta un overlay aqui: home-manager usa
+            # useGlobalPkgs = true, o sea que usa el MISMO pkgs que el
+            # sistema, que ya lleva el overlay de wayle (ver
+            # overlays/wayle-module.nix). Ponerlo otra vez aqui
+            # provoke recursion infinita: el overlay se aplicaria a un
+            # pkgs que ya lo tiene.
+            nixpkgs.overlays = [ ];
           }
         ];
 

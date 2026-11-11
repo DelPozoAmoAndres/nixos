@@ -28,9 +28,32 @@
 // La barra se hace mas baja con bar.padding en el config.toml, nunca
 // comprimiendo los iconos.
 //
-button {
-    --bar-btn-icon-size: 16px;
-    --bar-btn-label-size: 13px;
+// El selector universal es el que usa wayle para definir sus variables
+// ("* { --bar-btn-icon-color: ... }"), asi que un selector mas
+// especifico como "button" no gana: hay que usar !important.
+* {
+    --bar-btn-icon-size: 16px !important;
+    --bar-btn-label-size: 13px !important;
+    // El boton de dashboard usa el icono grande (--bar-icon-lg,
+    // calc(1.6rem * bar-scale) = 20.8px con la fuente de 13px) y se
+    // deforma igual que los demas.
+    --bar-icon-lg: 16px !important;
+}
+
+// El boton de dashboard: su BarButton va dentro de un gtk::Box con la
+// clase "dashboard", y el "all: unset" del menubutton descarta el
+// -gtk-icon-size heredado. El icono se dibuja al tamaño que le da el
+// layout, no al de la variable, y sale estirado.
+//
+// Hay que fijarle el tamaño al image explicitamente.
+.dashboard {
+    image {
+        -gtk-icon-size: 16px;
+        min-width: 16px;
+        min-height: 16px;
+        width: 16px;
+        height: 16px;
+    }
 }
 
 // El texto del reloj y de los porcentajes sale con las letras afinadas

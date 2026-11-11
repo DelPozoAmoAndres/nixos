@@ -23,6 +23,50 @@ let
   #     https://github.com/brave/brave-browser/releases/download/v1.91.175/brave-browser_1.91.175_amd64.deb
   version = "1.91.175";
 
+  # Librerias del sistema a las que el .deb de Brave esta enlazado. En
+  # Nix no existen (/usr/lib no existe), asi que hay que ponerlas en el
+  # RPATH del binario.
+  systemLibs = with pkgs; [
+    alsa-lib
+    at-spi2-atk
+    at-spi2-core
+    atk
+    cairo
+    cups
+    dbus
+    expat
+    gdk-pixbuf
+    glib
+    gtk3
+    libdrm
+    libGL
+    libglvnd
+    libxkbcommon
+    libx11
+    libxcb
+    libxext
+    # Las que faltaban (el link fallaba con "libgbm.so.1: cannot open
+    # shared object file"): las aporta el driver de la GPU.
+    libgbm
+    libxcomposite
+    libxdamage
+    libxfixes
+    libxrandr
+    libxrender
+    libxi
+    libxtst
+    nspr
+    nss
+    pango
+    pipewire
+    pulseaudio
+    snappy
+    udev
+    util-linux
+    wayland
+    xdg-utils
+  ];
+
   braveDeb = pkgs.fetchurl {
     url = "https://github.com/brave/brave-browser/releases/download/v${version}/brave-browser_${version}_amd64.deb";
     hash = "sha256-/+xaqBCYzo4bvYASoRgDHDIUb2aWX1DGxqfDifeWKSQ=";
@@ -47,42 +91,24 @@ let
     # arranca pero muere con "libglib-2.0.so.0: cannot open shared
     # object file" (el .deb las trae enlazadas contra /usr/lib, que en
     # Nix no existe).
-    nativeBuildInputs = [ pkgs.dpkg pkgs.makeWrapper pkgs.wrapGAppsHook3 ];
-
-    propagatedBuildInputs = with pkgs; [
-      alsa-lib
-      at-spi2-atk
-      at-spi2-core
-      atk
-      cairo
-      cups
-      dbus
-      expat
-      gdk-pixbuf
-      glib
-      gtk3
-      libdrm
-      libGL
-      libglvnd
-      libxkbcommon
-      libx11
-      libxcb
-      libxext
-      nspr
-      nss
-      pango
-      pipewire
-      pulseaudio
-      snappy
-      udev
-      util-linux
-      wayland
-      xdg-utils
+    nativeBuildInputs = [
+      pkgs.dpkg
+      pkgs.makeWrapper
+      pkgs.wrapGAppsHook3
+      # Necesario para el parcheo manual del binario real (installPhase).
+      pkgs.patchelf
     ];
+
+    propagatedBuildInputs = systemLibs;
 
     dontConfigure = true;
     dontBuild = true;
     dontStrip = true;
+    # El autoPatchelf automatico se desactiva: parchea TODOS los binarios y
+    # falla con las librerias opcionales de Qt5/Qt6 que Brave trae pero no
+    # usa. El binario real se parchea a mano en el installPhase, que es
+    # donde hace falta (esta en opt/, no en bin/).
+    dontPatchELF = true;
 
     installPhase = ''
       runHook preInstall
@@ -129,6 +155,34 @@ let
         [ -e "$lib" ] || continue
         ln -sf "$lib" $out/lib/ 2>/dev/null || true
       done
+
+      # El binario real de Brave esta en $out/opt/brave.com/brave/brave,
+      # NO en $out/bin. El autoPatchelf automatico de nixpkgs solo
+      # parchea los binarios de $out/bin, asi que el binario real se
+      # queda SIN RUNPATH y al arrancar muere con:
+      #
+      #   brave: error while loading shared libraries:
+      #   libglib-2.0.so.0: cannot open shared object file
+      #
+      # Por eso se parchea aqui, con el RPATH de las
+      # propagatedBuildInputs (las librerias del sistema que el .deb
+      # enlazaba contra /usr/lib, que en Nix no existe).
+      local rpath="${lib.makeLibraryPath systemLibs}"
+      for bin in $out/opt/brave.com/brave/brave $out/opt/brave.com/brave/chrome-sandbox; do
+        if [ -e "$bin" ]; then
+          patchelf --set-rpath "$rpath" "$bin" || true
+        fi
+      done
+
+      # El sandbox de Chrome necesita el helper chrome-sandbox con el bit
+      # setuid (rwsr-xr-x), y el store de Nix es inmutable y no admite
+      # bits especiales: no se puede instalar. Sin el, Chrome no arranca
+      # a menos que se lance con --no-sandbox.
+      #
+      # Se anade el flag al wrapper para que funcione desde cualquier
+      # sitio (el atajo de Hyprland, el .desktop del menu de apps), no
+      # solo desde una linea de comandos.
+      makeWrapperArgs+=(--add-flags "--no-sandbox")
 
       # El sandbox necesita --no-sandbox porque no hay binario setuid.
       export MOZ_DISABLE_CONTENT_SANDBOX=1
