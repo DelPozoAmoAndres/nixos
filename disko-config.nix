@@ -34,12 +34,15 @@
                       mountpoint = "/";
                     };
                     "/home" = {
-                      mountOptions = ["compress=zstd" "noatime"];
+                      # SIN compress=zstd: penaliza 3-4x las escrituras de
+                      # muchos ficheros pequenos (instalar juegos, builds).
+                      # Ver modules/storage.nix para la medicion.
+                      mountOptions = ["noatime"];
                       mountpoint = "/home";
                     };
                     "/home/pozito" = {};
                     "/nix" = {
-                      mountOptions = ["compress=zstd" "noatime"];
+                      mountOptions = ["noatime"];
                       mountpoint = "/nix";
                     };
                   };
