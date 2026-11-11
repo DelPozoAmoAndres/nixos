@@ -1,9 +1,33 @@
 # Optimización del sistema — resumen
 
-Documento de referencia de los cambios aplicados el 2026-11-10. El
-objetivo era el mismo que planté el usuario: "tengo 32 GB de RAM y parece
-que tengo muy menos", más la duda de por qué la CPU solo mostraba un
-porcentaje agregado.
+Documento de referencia de los cambios aplicados el 2026-11-10 y
+2026-11-11. El objetivo era el mismo que planté el usuario: "tengo 32 GB
+de RAM y parece que tengo muy menos", más la duda de por qué la CPU solo
+mostraba un porcentaje agregado.
+
+## Resultado
+
+| Métrica | Antes | Después |
+|---|---|---|
+| RAM usada | 27 GB / 31 GB | **6.7 GB / 31 GB** |
+| RAM libre | 271 MB | **20 GB** |
+| Swap (zram) usado | 8.5 GB | **0 B** |
+| `vm.swappiness` | 150 | **20** |
+| Tamaño de zram | 15.6 GB | **31.3 GB** |
+| RAM de la VM `INDRA-MSC` | 20 GB | **12 GB** |
+| Barra del panel | HyprPanel (GTK/JS) | **Wayle 0.7.1 (Rust/GTK4)** |
+| Altura de la barra | — | **36px**, transparente, solo en el DP-1 |
+| Latencia de los atajos | — | **42-45ms** |
+
+**Lo que se rompió por el camino y hubo que arreglar:** HyprPanel fue
+archivado en nixpkgs y `pkgs.brave` eliminado, así que el sistema no
+reconstruía. Se migró a Wayle (el sustituto oficial) y se reempaquetó
+Brave desde su `.deb` oficial.
+
+También se arregló el arranque, que fallaba solo tras reiniciar (ver
+la sección 7): el autostart mataba sus propios procesos, el puente del
+socket IPC corría demasiado pronto, Brave se quedaba sin RUNPATH y el
+agente de polkit no arrancaba.
 
 ---
 
@@ -287,20 +311,29 @@ vez de depender del evento:
 
 ```lua
 local function autostart(cmd)
-    hl.exec_cmd("sh -c '" .. cmd .. " >/dev/null 2>&1 &'")
+    hl.exec_cmd(cmd .. " >/dev/null 2>&1")
 end
 
 autostart("sh ~/.config/hypr/ipc-compat.sh")
-autostart("hyprpaper")
-autostart("hyprpolkitagent")
+autostart("hyprpaper --config ~/.config/hypr/hyprpaper.conf")
 autostart("wayle panel start")
-autostart("ulauncher --hide-window --no-window-shadow")
+autostart_unique("sh ~/.config/hypr/ulauncher-start.sh", "ulauncher", ".ulauncher-wrap")
 ```
 
-El `&` final es imprescindible: `hl.exec_cmd` espera a que el comando
-termine, y hyprpaper y ulauncher son daemons que no terminan nunca.
-Como el autostart está en el cuerpo del config (no en un evento), se
-ejecuta en cada carga del config, y es idempotente.
+**El `&` NO debe ponerse.** Hyprland ya lanza el comando en segundo
+plano (`spawnRawProc`), asi que con el `&` extra lo que pasaba es que el
+shell terminaba y **mataba a su propio hijo**: hyprpaper, ulauncher y el
+agente de polkit morian nada mas arrancar. Ese fue el bug de fondo del
+"no tengo wallpaper ni atajos".
+
+El agente de polkit va aparte: su binario esta en `libexec/`, no en el
+PATH, asi que lo lanza su propio servicio de systemd de usuario
+(`hyprpolkitagent.service`).
+
+Como el autostart esta en el cuerpo del config (no en un evento), se
+ejecuta en cada carga del config. Para los daemons que se duplicarian
+con cada recarga (hyprpaper, ulauncher) se usa `autostart_unique()`, que
+mata la instancia anterior antes de lanzar la nueva.
 
 ### Los atajos que no funcionaban
 
