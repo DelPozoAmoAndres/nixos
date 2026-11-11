@@ -196,7 +196,9 @@ format = "%H:%M"
 icon-name = "tb-calendar-time-symbolic"
 icon-show = false
 label-show = true
-label-color = "#b4befe"
+# Mismo color que los iconos (#cdd6f4): antes la hora era azul
+# (#b4befe) y resaltaba mas que el resto de la barra.
+label-color = "#cdd6f4"
 icon-color = "#cdd6f4"
 icon-bg-color = "#00000000"
 button-bg-color = "#00000000"

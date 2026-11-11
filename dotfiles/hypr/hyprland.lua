@@ -97,9 +97,23 @@ autostart_unique("hyprpaper --config ~/.config/hypr/hyprpaper.conf", "hyprpaper"
 autostart("wayle panel start")
 
 -- Lanzador de aplicaciones.
--- Ulauncher: con --hide-window arranca oculto, que es como se ha
--- hecho siempre, y el atajo lo muestra con el shim ulauncher-toggle.
-autostart_unique("ulauncher --hide-window --no-window-shadow", "ulauncher", ".ulauncher-wrap")
+-- Ulauncher.
+--
+-- Se arranca SIN --hide-window a proposito: con ese flag la ventana
+-- NUNCA se crea, y el toggle por D-Bus no tiene nada que mostrar
+-- (el shim responde con exito pero no aparece nada).
+--
+-- La ventana se crea y luego se oculta con un toggle, dejando el
+-- daemon vivo y con la ventana lista: a partir de ahi el atajo
+-- alterna de forma instantanea (~45ms).
+--
+-- El toggle se hace con un pequeno retardo para que la ventana exista
+-- cuando se llama.
+-- ulauncher es un daemon y no termina nunca, asi que va en background
+-- ("&"); el toggle despues espera a que la ventana exista.
+autostart_unique(
+    "ulauncher --no-window-shadow & sleep 2 && ulauncher-toggle",
+    "ulauncher", ".ulauncher-wrap")
 
 -- Monitor principal: el DP-1.
 --

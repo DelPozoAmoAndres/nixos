@@ -464,15 +464,25 @@ Wayland, y se monto un script propio que relanzaba el proceso. Era una
 via de trabajo correcta pero lenta (~0.5s, el arranque de Python), y
 ademas ocultaba el problema de fondo.
 
-La solucion buena es la que siempre se uso:
+La solucion buena es la que siempre se uso, con UNA diferencia
+importante:
 
 ```
-exec-once = ulauncher --hide-window --no-window-shadow
 bind = $mainMod, RETURN, exec, ulauncher-toggle
 ```
 
-Con `--hide-window` el daemon arranca sin ventana y el shim
-`ulauncher-toggle` la muestra al vuelo: **42-70ms**, instantaneo.
+pero el daemon se arranca **sin** `--hide-window`, y se oculta con un
+toggle justo despues:
+
+```
+ulauncher --no-window-shadow & sleep 2 && ulauncher-toggle
+```
+
+Por que: con `--hide-window` la ventana **nunca se crea**, y el toggle
+por D-Bus no tiene nada que mostrar (responde con exito pero no
+aparece nada). Hay que **inicializar** la ventana primero y luego
+alternar con el toggle. Asi el daemon queda vivo con la ventana creada,
+y el atajo alterna de forma instantanea: **43-45ms**.
 
 El error que suelta el shim por consola ("Cannot get client list
 properties") viene del `wmctrl -a` que hace al final (X11, no funciona
