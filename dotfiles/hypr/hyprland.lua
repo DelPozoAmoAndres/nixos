@@ -35,13 +35,43 @@ hl.monitor({
 ---- AUTOSTART ----
 -------------------
 
-hl.on("hyprland.start", function()
-    hl.exec_cmd("sh ~/.config/hypr/ipc-compat.sh")
-    hl.exec_cmd("hyprpaper")
-    hl.exec_cmd("hyprpolkitagent")
-    hl.exec_cmd("wayle panel start")
-    hl.exec_cmd("ulauncher --hide-window --no-window-shadow")
-end)
+-- Los programas de fondo se lanzan directamente al cargar el config, en
+-- vez de engancharse al evento "hyprland.start".
+--
+-- Por que: ese evento se dispara UNA sola vez, cuando arranca
+-- Hyprland. Si el config Lua no esta todavia en su sitio en ese
+-- momento (por ejemplo, porque home-manager acaba de desplegarlo, o
+-- porque se recarga la sesion), el evento ya paso y el autostart se
+-- pierde para siempre: no hay wallpaper, ni ulauncher, ni agente de
+-- polkit. Lanzarlos aqui los hace idempotentes: si ya estan corriendo
+-- no se duplican.
+--
+-- Se usa "sh -c '... &' &" para que el proceso se desligue del shell:
+-- hl.exec_cmd espera a que el comando termine, y hyprpaper y ulauncher
+-- son daemons que no terminan nunca.
+local function autostart(cmd)
+    hl.exec_cmd("sh -c '" .. cmd .. " >/dev/null 2>&1 &'")
+end
+
+-- Puente del socket IPC de Hyprland 0.55 (lo movio a <instancia>/
+-- .socket.sock; las librerias de barra siguen buscando <instancia>/
+-- socket). Sin esto los clics de la barra no responden.
+autostart("sh ~/.config/hypr/ipc-compat.sh")
+
+-- Fondo de pantalla. hyprpaper lee su config de ~/.config/hypr/
+-- hyprpaper.conf y se queda en primer plano, por eso el "&".
+autostart("hyprpaper")
+
+-- Agente de autorizacion de polkit: sin el, montar discos o pedir
+-- permisos falla en silencio.
+autostart("hyprpolkitagent")
+
+-- Panel (Wayle, sustituye a HyprPanel). El servicio de usuario de
+-- home-manager ya lo levanta; esta linea es el respaldo.
+autostart("wayle panel start")
+
+-- Lanzador de aplicaciones.
+autostart("ulauncher --hide-window --no-window-shadow")
 
 
 -------------------------------
@@ -151,6 +181,11 @@ hl.device({
 ---- ATAJOS ----
 ---------------------
 
+-- Nota sobre los argumentos de exec_cmd: el dispatcher RECIBE un unico
+-- string y lo ejecuta a traves de un shell, asi que "hyprshot -m region"
+-- funciona. Lo que NO funciona es pasar el comando como una variable
+-- sin comillas (hl.dsp.exec_cmd(brave) da error de sintaxis) ni
+-- escribirlo como codigo Lua suelto.
 hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd("ulauncher-toggle"))
 hl.bind(seccMod .. " + B", hl.dsp.exec_cmd("brave"))
 hl.bind(seccMod .. " + D", hl.dsp.exec_cmd("vesktop"))

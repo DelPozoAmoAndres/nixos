@@ -100,12 +100,6 @@
       ${pkgs.hyprland}/bin/hyprctl dispatch exit
       ${pkgs.systemd}/bin/loginctl terminate-user "pozito"
     '')
-    # Brave fue eliminado de nixpkgs (sin mantenedores para resolver
-    # problemas de seguridad). Chromium es el mismo motor: mismo
-    # V8, mismo Blink, mismas extensiones. Se pierde el bloqueo de
-    # trackers y los sincronizadores de Brave, que se pueden recuperar
-    # con la extension uBlock Origin si hacen falta.
-    chromium
     vesktop
     pear-desktop
     telegram-desktop

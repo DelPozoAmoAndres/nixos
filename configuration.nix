@@ -12,6 +12,7 @@
     ./modules/gaming.nix
     #./modules/ai.nix
     ./modules/desktop.nix
+    ./modules/brave.nix
     ./modules/dev.nix
     ./modules/flatpak.nix
   ];

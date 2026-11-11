@@ -5,17 +5,24 @@
   # que sobreviva a los reinicios y a los perfiles de energia.
   powerManagement.cpuFreqGovernor = "performance";
 
-  # Latencia de cambio de frecuencia: con el valor por defecto (1000 us)
-  # hay un retardo perceptible al salir de idle en las cargas cortas y
-  # discontinuas tipicas del escritorio (click en un menu, scroll, abrir
-  # pestana). Con 50 us el nucleo sube de reloj casi al instante.
+  # El governor se fija via powerManagement.cpuFreqGovernor (cpupower lo
+  # aplica al arrancar), pero powertop o un cambio de TTY pueden
+  # degradarlo a powersave sin avisar. Este servicio lo reafirma.
   #
-  # Nota: la opcion estandar de nixpkgs no expone la latencia, asi que
-  # se fija directamente sobre sysfs con un servicio propio. El
-  # "performance" de arriba lo pone via cpupower; este servicio asegura
-  # la latencia despues, cuando el driver intel_cpufreq ya esta listo.
+  # Sobre la latencia de transicion: con el driver intel_cpufreq (que es
+  # el que reporta scaling_driver en este equipo, con intel_pstate en
+  # modo passive) NO existe el fichero scaling_transition_latency: solo
+  # cpuinfo_transition_latency, que es de solo lectura e informational.
+  # El valor se fija en el kernel con el parametro de modulo "tsc" (en
+  # microsegundos), que se pasa al cargar intel_cpufreq; no se puede
+  # cambiar en caliente. El valor por defecto de este driver es 20000
+  # us.
+  #
+  # A 3.6 GHz, 20000 us son unos 70.000 ciclos: plenty para cualquier
+  # carga del escritorio, asi que no compensa forzar un boot parameter
+  # que solo afectaria a la salida de idle.
   systemd.services.cpufreq-latency = {
-    description = "Ajusta la latencia de transicion de frecuencia de CPU";
+    description = "Reafirma el governor de frecuencia de CPU en performance";
     wantedBy = [ "multi-user.target" ];
     after = [ "systemd-modules-load.service" "cpufreq.service" ];
     serviceConfig = {
@@ -23,11 +30,6 @@
       RemainAfterExit = true;
     };
     script = ''
-      for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_transition_latency; do
-        [ -w "$f" ] && echo 50 > "$f" 2>/dev/null || true
-      done
-      # Y se reafirma el governor: powertop o un TTY pueden haberlo
-      # cambiado a powersave despues del arranque.
       for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do
         [ -w "$f" ] && echo performance > "$f" 2>/dev/null || true
       done
