@@ -44,6 +44,17 @@ timeout 60 nvim --headless \
   '+qa' 2>&1 | grep -E "^  " | head -10
 
 echo
+echo "== OpenCode =="
+timeout 90 nvim --headless \
+  '+lua require("lazy").load({plugins={"nickjvandyke/opencode.nvim"}})' \
+  '+lua print("  plugin cargado -> "..tostring(pcall(require, "opencode")))' \
+  '+lua print("  keymap <leader>oa -> "..tostring(vim.fn.maparg("<leader>oa","n")~=""))' \
+  '+lua print("  keymap <leader>os -> "..tostring(vim.fn.maparg("<leader>os","n")~=""))' \
+  '+lua print("  keymap <leader>ov -> "..tostring(vim.fn.maparg("<leader>ov","x")~=""))' \
+  '+lua print("  opencode en PATH -> "..tostring(vim.fn.executable("opencode")==1))' \
+  '+qa' 2>&1 | grep -E "^  " | head -10
+
+echo
 echo "== Mason: no debe intentar instalar nada =="
 if [ -f ~/.local/state/nvim/mason.log ]; then
   RECENT=$(grep -c "Executing installer" ~/.local/state/nvim/mason.log 2>/dev/null || echo 0)

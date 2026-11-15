@@ -23,6 +23,8 @@ let
     "LazyVim" = { repo = "LazyVim/LazyVim"; pkg = pkgs.vimPlugins.LazyVim; };
     "lazy.nvim" = { repo = "folke/lazy.nvim"; pkg = pkgs.vimPlugins.lazy-nvim; };
     "snacks.nvim" = { repo = "folke/snacks.nvim"; pkg = pkgs.vimPlugins.snacks-nvim; };
+    # Integracion con OpenCode (ver opencodeNvim mas abajo).
+    "opencode.nvim" = { repo = "nickjvandyke/opencode.nvim"; pkg = opencodeNvim; };
     # Snacks.explorer sustituye a project.nvim para moverse entre
     # proyectos (el extra util.project de LazyVim necesita telescope o
     # fzf-lua, que no estan instalados).
@@ -90,6 +92,27 @@ let
     # ─── Utilidades ──────────────────────────────────────────────────
     "gh.nvim" = { repo = "ldelossa/gh.nvim"; pkg = pkgs.vimPlugins.gh-nvim; };
     "litee.nvim" = { repo = "ldelossa/litee.nvim"; pkg = pkgs.vimPlugins.litee-nvim; };
+  };
+
+  # ─── OpenCode ─────────────────────────────────────────────────────────
+  # opencode.nvim integra Neovim con el servidor/API de OpenCode.
+  #
+  # El paquete de nixpkgs (vimPlugins.opencode-nvim) esta en la v1.0.2,
+  # que habla con la API v1 (/session, /event). Este equipo tiene
+  # opencode v2.2.5, cuya API es distinta: un daemon en background y
+  # eventos con forma { id, type, data }. Por eso se construye el plugin
+  # desde su rama `main`, que ya soporta v2.
+  #
+  # El commit se fija para que la build sea reproducible.
+  opencodeNvim = pkgs.vimUtils.buildVimPlugin {
+    pname = "opencode.nvim";
+    version = "unstable-2026-10-30";
+    src = pkgs.fetchgit {
+      url = "https://github.com/nickjvandyke/opencode.nvim.git";
+      rev = "4851ae503585dc5142ad66a98e8952a74e1f7b3a";
+      hash = "sha256-Qhn8hGQ/S6SCV0GxsrS8nAPSq0ndwMNaEYhOw0Mv/Pc=";
+    };
+    doCheck = false;
   };
 
   # Grammars de Tree-sitter que se instalan desde nixpkgs.
@@ -259,10 +282,126 @@ in
           -- Snacks.explorer: explorador de archivos nativo de LazyVim
           -- v16. Sustituye al extra util.project, que requeria telescope
           -- o fzf-lua para funcionar.
+          --
+          -- El bloque de `input` y `picker` es la integracion que
+          -- opencode.nvim necesita para que `ask()` y `select()` usen
+          -- los prompts de Snacks (con completions via LSP interno).
           {
             "folke/snacks.nvim",
             opts = {
               explorer = { enabled = true },
+              input = { enabled = true },
+              picker = {
+                enabled = true,
+                win = {
+                  input = {
+                    keys = {
+                      ["<a-o>"] = { "opencode_send", mode = { "n", "i" } },
+                    },
+                  },
+                },
+                actions = {
+                  opencode_send = function(picker)
+                    local items = vim.tbl_map(function(item)
+                      return item.file
+                        and require("opencode").format({ path = item.file, from = item.pos, to = item.end_pos })
+                        or item.text
+                    end, picker:selected({ fallback = true }))
+                    require("opencode").prompt(table.concat(items, ", ") .. " ")
+                  end,
+                },
+              },
+            },
+          },
+
+          -- ─── OpenCode ───────────────────────────────────────────────────
+          -- Integracion con el servidor/API de OpenCode v2.
+          --
+          -- El servidor se lanza en un terminal de Snacks (derecha) y el
+          -- plugin se conecta a el. Los eventos del servidor se reenvian
+          -- como autocmds `User OpencodeEvent:*`.
+          {
+            "nickjvandyke/opencode.nvim",
+            -- Los keymaps se registran con `vim.keymap.set` en vez de con
+            -- el campo `keys` del spec: asi quedan disponibles desde el
+            -- arranque, sin depender de que lazy.nvim cargue el plugin
+            -- (que es lazy).
+            init = function()
+              local opencode_cmd = "opencode"
+
+              vim.g.opencode_opts = {
+                server = {
+                  -- Lanzar el daemon de OpenCode en un terminal de Snacks.
+                  start = function()
+                    require("snacks.terminal").open(opencode_cmd, {
+                      win = { position = "right", enter = false },
+                    })
+                  end,
+                },
+                events = {
+                  enabled = true,
+                  -- Recargar los buffers cuando OpenCode edita un fichero.
+                  reload = { enabled = true },
+                },
+              }
+
+              -- Neovim debe recargar los ficheros modificados fuera.
+              vim.o.autoread = true
+
+              -- ─── Keymaps de OpenCode ──────────────────────────────────
+              -- `oa` pregunta, `os` abre el menu de prompts y comandos,
+              -- `ov` manda la seleccion visual y `oo` la linea.
+              vim.keymap.set({ "n", "x" }, "<leader>oa", function()
+                require("opencode").ask("@this: ")
+              end, { desc = "Preguntar a OpenCode" })
+
+              vim.keymap.set({ "n", "x" }, "<leader>os", function()
+                require("opencode").select()
+              end, { desc = "Menu de OpenCode" })
+
+              vim.keymap.set({ "n", "x" }, "<leader>ov", function()
+                return require("opencode").operator("@this")
+              end, { expr = true, desc = "Mandar la seleccion a OpenCode" })
+
+              vim.keymap.set("n", "<leader>oo", function()
+                return require("opencode").operator("@this") .. "_"
+              end, { expr = true, desc = "Mandar la linea a OpenCode" })
+            end,
+          },
+
+          -- ─── Terminal de OpenCode ───────────────────────────────────────
+          -- Tecla para mostrar/ocultar el terminal donde corre OpenCode.
+          -- Se usa `<C-.>` y no `<leader>t` porque Neovim anade un
+          -- retardo al leader cuando hay una mapping con <leader>.
+          {
+            "folke/snacks.nvim",
+            opts = {
+              terminal = { enabled = true },
+            },
+            keys = {
+              {
+                { "n", "t" },
+                "<C-.>",
+                function()
+                  require("snacks.terminal").toggle("opencode", {
+                    win = { position = "right", enter = false },
+                  })
+                end,
+                desc = "Terminal de OpenCode",
+              },
+            },
+          },
+
+          -- ─── Statusline de OpenCode ─────────────────────────────────────
+          -- Muestra el servidor conectado y su estado.
+          {
+            "nvim-lualine/lualine.nvim",
+            opts = {
+              sections = {
+                lualine_z = {
+                  { require("opencode").statusline },
+                },
+              },
             },
           },
 
@@ -438,6 +577,10 @@ in
       # Web / general
       just
       jq
+
+      # Cliente de OpenCode: el plugin abre un terminal con el daemon y
+      # se conecta a su API.
+      opencode
 
       # ─── Dependencias de LazyVim y Snacks ──────────────────────────
       # Snacks.picker necesita rg para grep y fd para el explorador.
