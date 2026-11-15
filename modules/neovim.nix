@@ -266,6 +266,56 @@ in
             },
           },
 
+          -- ─── Mason desactivado ───────────────────────────────────────
+          -- En Nix todas las herramientas (LSPs, formatters, linters)
+          -- vienen del nix store. Mason no lo sabe y trata de instalar
+          -- sus propias copias, lo que falla (sin `unzip`, `cargo`,
+          -- `luarocks`...) y ensucia el home.
+          --
+          -- Por eso se vacian sus listas de `ensure_installed` y se
+          -- desactivan los servidores que Mason gestionaria, de modo
+          -- que nvim-lspconfig los activa directamente con el binario
+          -- del PATH.
+          {
+            "mason-org/mason.nvim",
+            opts = {
+              ensure_installed = {},
+              install_root_dir = vim.fn.stdpath("data") .. "/mason",
+            },
+            config = function(_, opts)
+              require("mason").setup(opts)
+            end,
+          },
+          {
+            "mason-org/mason-lspconfig.nvim",
+            opts = {
+              ensure_installed = {},
+            },
+          },
+
+          -- Los servidores LSP se configuran con `mason = false` para
+          -- que nvim-lspconfig los active directamente con el binario
+          -- del PATH, sin que Mason tenga que instalar nada.
+          {
+            "neovim/nvim-lspconfig",
+            opts = {
+              servers = {
+                gopls = { mason = false },
+                angularls = { mason = false },
+                nil_ls = { mason = false },
+                jsonls = { mason = false },
+                yamlls = { mason = false },
+                marksman = { mason = false },
+                tailwindcss = { mason = false },
+                dockerls = { mason = false },
+                vtsls = { mason = false },
+                ts_ls = { mason = false },
+                tsserver = { mason = false },
+                tsc = { mason = false },
+              },
+            },
+          },
+
           -- Los parsers de Tree-sitter los instala nixpkgs, asi que se
           -- anula el instalador de nvim-treesitter: si faltara alguno,
           -- avisa en vez de compilarlo en tiempo de ejecucion (que
@@ -372,10 +422,18 @@ in
       # Nix
       nixd
       alejandra
+      stylua
+      shfmt
 
       # JSON / YAML
       yaml-language-server
       vscode-langservers-extracted
+
+      # Linters de Markdown y Docker (los instalaba Mason, ahora van
+      # desde nixpkgs).
+      markdownlint-cli2
+      markdown-toc
+      hadolint
 
       # Web / general
       just

@@ -26,7 +26,7 @@ done
 echo
 echo "== Herramientas dentro de Neovim =="
 timeout 60 nvim --headless \
-  '+lua for _,t in ipairs({"rg","fd","lazygit","fzf","tree-sitter","gopls","vtsls","prettier","eslint","nixd","go","node","trash","gs","mmdc"}) do print("  "..t.." -> "..(vim.fn.executable(t)==1 and "OK" or "FALTA")) end' \
+  '+lua for _,t in ipairs({"rg","fd","lazygit","fzf","tree-sitter","gopls","vtsls","prettier","eslint","nixd","go","node","trash","gs","mmdc","stylua","shfmt","gofumpt","golangci-lint","markdownlint-cli2","markdown-toc","hadolint","alejandra"}) do print("  "..t.." -> "..(vim.fn.executable(t)==1 and "OK" or "FALTA")) end' \
   '+qa' 2>&1 | grep -E "^\s+\S+ -> " | head -20
 
 echo
@@ -42,6 +42,20 @@ timeout 60 nvim --headless \
   '+lua print("  vim.ui.select == Snacks.picker.select -> "..tostring(vim.ui.select == Snacks.picker.select))' \
   '+lua print("  Snacks dashboard                      -> "..tostring(Snacks.dashboard ~= nil))' \
   '+qa' 2>&1 | grep -E "^  " | head -10
+
+echo
+echo "== Mason: no debe intentar instalar nada =="
+if [ -f ~/.local/state/nvim/mason.log ]; then
+  RECENT=$(grep -c "Executing installer" ~/.local/state/nvim/mason.log 2>/dev/null || echo 0)
+  if [ "$RECENT" -gt 0 ]; then
+    echo "  WARN: Mason ha intentado instalar $RECENT paquete(s). Ultimas:"
+    grep -A1 "Executing installer" ~/.local/state/nvim/mason.log | grep "name=" | tail -5 | sed 's/^/    /'
+  else
+    echo "  OK: sin instalaciones"
+  fi
+else
+  echo "  OK: sin log de Mason (no se ha ejecutado)"
+fi
 
 echo
 echo "== Errores en el log =="
