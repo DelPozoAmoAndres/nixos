@@ -274,6 +274,281 @@ in
         end
       end
 
+      -- ─── OpenCode ────────────────────────────────────────────────────
+      -- El setup va AQUI (y no en el `config` del spec) porque Home
+      -- Manager deja los plugins en `pack/hm/start/`, que Neovim carga
+      -- antes de ejecutar el init.lua. Al estar ya en el runtimepath,
+      -- lazy.nvim no ejecuta su `config`, asi que el wrapper de `ask` y
+      -- el daemon por proyecto nunca se configuraban.
+      --
+      -- ─── Por que un daemon por proyecto ──────────────────────────────
+      -- OpenCode v2 scopea las sesiones al DIRECTORIO DE TRABAJO del
+      -- daemon (no a los headers HTTP ni al query `?directory=`). El
+      -- servicio global (`opencode serve --service`) arranca con el cwd
+      -- desde el que se lanzo, asi que si Neovim se abre en un
+      -- subdirectorio no encuentra sesiones para ese proyecto.
+      --
+      -- Por eso aqui se lanza un daemon por directorio (con su cwd) en
+      -- un puerto derivado del path, y se lee su password del log que
+      -- imprime OpenCode al arrancar.
+      local opencode_state = {
+        servers = {},        -- cwd -> server
+        password = nil,      -- password del daemon del proyecto actual
+        url = nil,           -- url del daemon del proyecto actual
+      }
+
+      local function opencode_state_dir()
+        if vim.env.XDG_STATE_HOME and vim.env.XDG_STATE_HOME ~= "" then
+          return vim.env.XDG_STATE_HOME .. "/opencode"
+        end
+        return (vim.uv.os_homedir() or vim.env.HOME or "") .. "/.local/state/opencode"
+      end
+
+      -- Puerto estable por proyecto (4096 + hash del path).
+      local function port_for(cwd)
+        local hash = 0
+        for i = 1, #cwd do
+          hash = (hash * 31 + cwd:byte(i)) % 400
+        end
+        return 4096 + hash
+      end
+
+      -- Arranca (si hace falta) el daemon del proyecto y devuelve su url.
+      -- Es lazy: solo se llama cuando opencode.nvim va a conectar.
+      local function ensure_project_server(cwd)
+        if opencode_state.url and opencode_state.cwd == cwd then
+          return opencode_state.url
+        end
+
+        local port = port_for(cwd)
+        local url = "http://127.0.0.1:" .. port
+        local state_dir = opencode_state_dir()
+        local logfile = state_dir .. "/nvim-server-" .. port .. ".log"
+
+        -- ¿Ya hay un daemon escuchando?
+        local probe = vim.fn.system({
+          "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", url .. "/api/info",
+        })
+
+        if probe ~= "200" and probe ~= "401" then
+          -- Arrancarlo con el cwd del proyecto. Se usa `sh -c` para poder
+          -- redirigir la salida a un fichero: con `detach = true` Neovim
+          -- no entrega el stdout del job, y la password solo se imprime
+          -- por ahi. `detach` hace falta porque si no, Neovim mata el
+          -- daemon al salir.
+          vim.fn.jobstart({
+            "sh",
+            "-c",
+            string.format(
+              "opencode serve --port %d > %s 2>&1",
+              port,
+              vim.fn.shellescape(logfile)
+            ),
+          }, {
+            cwd = cwd,
+            detach = true,
+          })
+
+          -- Esperar a que publique su password.
+          for _ = 1, 80 do
+            vim.wait(100, function()
+              return false
+            end, 10)
+            if vim.fn.filereadable(logfile) == 1 then
+              local ok, lines = pcall(vim.fn.readfile, logfile)
+              if ok and lines and #lines > 0 then
+                -- OpenCode imprime "server password <password>".
+                local pw = table.concat(lines, "\n"):match("server password (%S+)")
+                if pw then
+                  opencode_state.password = pw
+                  break
+                end
+              end
+            end
+          end
+        end
+
+        -- Si el daemon ya existia (de una sesion anterior), leer su
+        -- password del registro que escribimos.
+        if not opencode_state.password then
+          local registration = state_dir .. "/service-nvim-" .. port .. ".json"
+          if vim.fn.filereadable(registration) == 1 then
+            local ok, lines = pcall(vim.fn.readfile, registration)
+            if ok and lines and #lines > 0 then
+              local decoded_ok, decoded = pcall(vim.fn.json_decode, table.concat(lines, "\n"))
+              if decoded_ok and type(decoded) == "table" then
+                opencode_state.password = decoded.password
+              end
+            end
+          end
+        end
+
+        -- Publicar el daemon para que opencode.nvim lo descubra (asi
+        -- puede leer su password).
+        if opencode_state.password then
+          vim.fn.writefile({
+            vim.json.encode({
+              id = "nvim-" .. port,
+              version = "2.2.5",
+              url = url,
+              password = opencode_state.password,
+            }),
+          }, state_dir .. "/service-nvim-" .. port .. ".json")
+        end
+
+        opencode_state.cwd = cwd
+        opencode_state.url = url
+        return url
+      end
+
+      -- Configuracion de opencode.nvim.
+      --
+      -- OJO: `vim.g` no admite funciones en Neovim, asi que la URL
+      -- dinamica se aplica sobre `require("opencode.config").opts`, que
+      -- es lo que consulta el plugin (ver lua/opencode/config.lua).
+      local function apply_opencode_config()
+        vim.g.opencode_opts = {
+          server = {
+            -- Lanzar el daemon de OpenCode en un terminal de Snacks.
+            --
+            -- Se pasa el directorio actual porque OpenCode v2 scopea las
+            -- sesiones al cwd del daemon.
+            start = function()
+              require("snacks.terminal").open(
+                "opencode " .. vim.fn.shellescape(vim.fn.getcwd()),
+                { win = { position = "right", enter = false }, cwd = vim.fn.getcwd() }
+              )
+            end,
+          },
+          events = {
+            enabled = true,
+            -- Recargar los buffers cuando OpenCode edita un fichero.
+            reload = { enabled = true },
+          },
+        }
+
+        -- Recargar el modulo de config: calcula sus defaults al
+        -- cargarse y hay que reponer la URL dinamica.
+        package.loaded["opencode.config"] = nil
+        local opts = require("opencode.config").opts
+
+        -- La URL se resuelve al conectar. Al hacerlo, `ensure_project_server`
+        -- deja la password del daemon en `opencode_state`, asi que se
+        -- propaga a la config justo despues (si no, `server.new(url)`
+        -- se crearia sin credenciales).
+        opts.server.url = function()
+          local cwd = vim.fn.getcwd()
+          if not cwd or cwd == "" then
+            return nil
+          end
+          local url = ensure_project_server(cwd)
+          if opencode_state.password then
+            opts.server.password = opencode_state.password
+            vim.env.OPENCODE_SERVER_PASSWORD = opencode_state.password
+          end
+          return url
+        end
+
+        if opencode_state.password then
+          opts.server.password = opencode_state.password
+          vim.env.OPENCODE_SERVER_PASSWORD = opencode_state.password
+        end
+      end
+
+      -- Si el directorio actual no tiene sesion, crearla. La API v2 la
+      -- crea en el cwd del daemon, que en este caso es el del proyecto.
+      local function ensure_session()
+        local cwd = vim.fn.getcwd()
+        local url = ensure_project_server(cwd)
+        if not url then
+          return false
+        end
+
+        local server = require("opencode.server").new(url, {
+          username = "opencode",
+          password = opencode_state.password,
+        })
+
+        local found = false
+        local checked = false
+        server:get_sessions():next(function(sessions)
+          for _, session in ipairs(sessions or {}) do
+            if not (session.time and session.time.archived) then
+              found = true
+              break
+            end
+          end
+          checked = true
+        end, function()
+          checked = true
+        end)
+        vim.wait(3000, function()
+          return checked
+        end, 50)
+
+        if found then
+          return true
+        end
+
+        local created, created_done = false, false
+        server:request("/api/session", "POST", {}):next(function(response)
+          created = response and response.data and true or false
+          created_done = true
+        end, function()
+          created_done = true
+        end)
+        vim.wait(4000, function()
+          return created_done
+        end, 50)
+
+        if created then
+          vim.notify("OpenCode: sesion creada para " .. cwd, vim.log.levels.INFO)
+        end
+        return created
+      end
+
+      -- Envolver `ask` y `prompt` para crear la sesion si hace falta.
+      -- Se guarda la original para no recursionar.
+      do
+        local original_ask = require("opencode").ask
+        require("opencode").ask = function(...)
+          ensure_session()
+          return original_ask(...)
+        end
+
+        local original_prompt = require("opencode").prompt
+        require("opencode").prompt = function(...)
+          ensure_session()
+          return original_prompt(...)
+        end
+      end
+
+      -- Aplicar la configuracion (URL dinamica + password).
+      apply_opencode_config()
+
+      -- Neovim debe recargar los ficheros que OpenCode edita.
+      vim.o.autoread = true
+
+      -- ─── Keymaps de OpenCode ──────────────────────────────────────────
+      -- `oa` pregunta, `os` abre el menu de prompts y comandos, `ov`
+      -- manda la seleccion visual y `oo` la linea.
+      vim.keymap.set({ "n", "x" }, "<leader>oa", function()
+        require("opencode").ask("@this: ")
+      end, { desc = "Preguntar a OpenCode" })
+
+      vim.keymap.set({ "n", "x" }, "<leader>os", function()
+        require("opencode").select()
+      end, { desc = "Menu de OpenCode" })
+
+      vim.keymap.set({ "n", "x" }, "<leader>ov", function()
+        return require("opencode").operator("@this")
+      end, { expr = true, desc = "Mandar la seleccion a OpenCode" })
+
+      vim.keymap.set("n", "<leader>oo", function()
+        return require("opencode").operator("@this") .. "_"
+      end, { expr = true, desc = "Mandar la linea a OpenCode" })
+
+
       -- LazyVim con todos los plugins servidos desde nixpkgs.
       require("lazy").setup({
         spec = {
@@ -322,51 +597,10 @@ in
           -- como autocmds `User OpencodeEvent:*`.
           {
             "nickjvandyke/opencode.nvim",
-            -- Los keymaps se registran con `vim.keymap.set` en vez de con
-            -- el campo `keys` del spec: asi quedan disponibles desde el
-            -- arranque, sin depender de que lazy.nvim cargue el plugin
-            -- (que es lazy).
-            init = function()
-              local opencode_cmd = "opencode"
-
-              vim.g.opencode_opts = {
-                server = {
-                  -- Lanzar el daemon de OpenCode en un terminal de Snacks.
-                  start = function()
-                    require("snacks.terminal").open(opencode_cmd, {
-                      win = { position = "right", enter = false },
-                    })
-                  end,
-                },
-                events = {
-                  enabled = true,
-                  -- Recargar los buffers cuando OpenCode edita un fichero.
-                  reload = { enabled = true },
-                },
-              }
-
-              -- Neovim debe recargar los ficheros modificados fuera.
-              vim.o.autoread = true
-
-              -- ─── Keymaps de OpenCode ──────────────────────────────────
-              -- `oa` pregunta, `os` abre el menu de prompts y comandos,
-              -- `ov` manda la seleccion visual y `oo` la linea.
-              vim.keymap.set({ "n", "x" }, "<leader>oa", function()
-                require("opencode").ask("@this: ")
-              end, { desc = "Preguntar a OpenCode" })
-
-              vim.keymap.set({ "n", "x" }, "<leader>os", function()
-                require("opencode").select()
-              end, { desc = "Menu de OpenCode" })
-
-              vim.keymap.set({ "n", "x" }, "<leader>ov", function()
-                return require("opencode").operator("@this")
-              end, { expr = true, desc = "Mandar la seleccion a OpenCode" })
-
-              vim.keymap.set("n", "<leader>oo", function()
-                return require("opencode").operator("@this") .. "_"
-              end, { expr = true, desc = "Mandar la linea a OpenCode" })
-            end,
+            -- El plugin se configura desde el init.lua (bloque de OpenCode
+            -- de arriba), porque Home Manager deja los plugins en
+            -- `pack/hm/start/` y lazy.nvim no ejecuta su `config` cuando
+            -- ya estan en el runtimepath.
           },
 
           -- ─── Terminal de OpenCode ───────────────────────────────────────
