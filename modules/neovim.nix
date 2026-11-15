@@ -550,21 +550,32 @@ in
       -- ─── Keymaps de OpenCode ──────────────────────────────────────────
       -- `oa` pregunta, `os` abre el menu de prompts y comandos, `ov`
       -- manda la seleccion visual y `oo` la linea.
-      vim.keymap.set({ "n", "x" }, "<leader>oa", function()
-        require("opencode").ask("@this: ")
-      end, { desc = "Preguntar a OpenCode" })
+      --
+      -- Se registran en `User LazyDone` porque LazyVim define el leader
+      -- (`vim.g.mapleader = " "`) en su options.lua, que se carga DESPUES
+      -- de este bloque. Si se registraran aqui, `<leader>` se resolveria
+      -- con el valor por defecto (`\\`) y las teclas no responderian.
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "LazyDone",
+        once = true,
+        callback = function()
+          vim.keymap.set({ "n", "x" }, "<leader>oa", function()
+            require("opencode").ask("@this: ")
+          end, { desc = "Preguntar a OpenCode" })
 
-      vim.keymap.set({ "n", "x" }, "<leader>os", function()
-        require("opencode").select()
-      end, { desc = "Menu de OpenCode" })
+          vim.keymap.set({ "n", "x" }, "<leader>os", function()
+            require("opencode").select()
+          end, { desc = "Menu de OpenCode" })
 
-      vim.keymap.set({ "n", "x" }, "<leader>ov", function()
-        return require("opencode").operator("@this")
-      end, { expr = true, desc = "Mandar la seleccion a OpenCode" })
+          vim.keymap.set({ "n", "x" }, "<leader>ov", function()
+            return require("opencode").operator("@this")
+          end, { expr = true, desc = "Mandar la seleccion a OpenCode" })
 
-      vim.keymap.set("n", "<leader>oo", function()
-        return require("opencode").operator("@this") .. "_"
-      end, { expr = true, desc = "Mandar la linea a OpenCode" })
+          vim.keymap.set("n", "<leader>oo", function()
+            return require("opencode").operator("@this") .. "_"
+          end, { expr = true, desc = "Mandar la linea a OpenCode" })
+        end,
+      })
 
 
       -- LazyVim con todos los plugins servidos desde nixpkgs.
