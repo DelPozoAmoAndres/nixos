@@ -460,15 +460,26 @@ in
       --
       -- OJO: `server.new(url, ...)` devuelve una PROMESA que resuelve al
       -- servidor, no el servidor directamente.
-      local function ensure_session()
+
+      -- Crear la sesion del directorio actual en segundo plano, para
+      -- que `ask`/`prompt` la encuentren sin tener que esperar.
+      --
+      -- NO se envuelven `ask` ni `prompt`: esos esperan de forma
+      -- asincrona (promesas con curl), y un `vim.wait` dentro bloquearia
+      -- el event loop y el prompt no se abriria nunca.
+      local function ensure_session_async()
         local cwd = vim.fn.getcwd()
-        local url = ensure_project_server(cwd)
-        if not url then
-          return false
+        if not cwd or cwd == "" then
+          return
         end
 
-        -- Resolver el servidor (la promesa hace el GET /api/info).
-        local server, resolved = nil, false
+        local url = ensure_project_server(cwd)
+        if not url then
+          return
+        end
+
+        local server
+        local resolved = false
         require("opencode.server").new(url, {
           username = "opencode",
           password = opencode_state.password,
@@ -478,71 +489,45 @@ in
         end, function()
           resolved = true
         end)
-        vim.wait(5000, function()
-          return resolved
-        end, 50)
 
-        if not server then
-          return false
-        end
+        -- Se espera de forma no bloqueante: se comprueba en un timer.
+        local timer = vim.uv.new_timer()
+        timer:start(100, 100, vim.schedule_wrap(function()
+          if resolved and server then
+            timer:stop()
+            timer:close()
 
-        -- ¿Ya hay una sesion para este directorio?
-        local found, checked = false, false
-        server:get_sessions():next(function(sessions)
-          for _, session in ipairs(sessions or {}) do
-            if not (session.time and session.time.archived) then
-              found = true
-              break
-            end
+            -- ¿Ya hay sesion para este directorio?
+            server:get_sessions():next(function(sessions)
+              for _, session in ipairs(sessions or {}) do
+                if not (session.time and session.time.archived) then
+                  return
+                end
+              end
+              -- No hay: crearla.
+              server:request("/api/session", "POST", {}):next(function(response)
+                if response and response.data then
+                  vim.notify("OpenCode: sesion creada para " .. cwd, vim.log.levels.INFO)
+                end
+              end, function() end)
+            end, function() end)
           end
-          checked = true
-        end, function()
-          checked = true
-        end)
-        vim.wait(4000, function()
-          return checked
-        end, 50)
-
-        if found then
-          return true
-        end
-
-        -- Crear una.
-        local created, created_done = false, false
-        server:request("/api/session", "POST", {}):next(function(response)
-          created = response and response.data and true or false
-          created_done = true
-        end, function()
-          created_done = true
-        end)
-        vim.wait(5000, function()
-          return created_done
-        end, 50)
-
-        if created then
-          vim.notify("OpenCode: sesion creada para " .. cwd, vim.log.levels.INFO)
-        end
-        return created
-      end
-
-      -- Envolver `ask` y `prompt` para crear la sesion si hace falta.
-      -- Se guarda la original para no recursionar.
-      do
-        local original_ask = require("opencode").ask
-        require("opencode").ask = function(...)
-          ensure_session()
-          return original_ask(...)
-        end
-
-        local original_prompt = require("opencode").prompt
-        require("opencode").prompt = function(...)
-          ensure_session()
-          return original_prompt(...)
-        end
+        end))
       end
 
       -- Aplicar la configuracion (URL dinamica + password).
       apply_opencode_config()
+
+      -- Asegurar la sesion del directorio actual, y crear una nueva cada
+      -- vez que se cambie de directorio.
+      vim.api.nvim_create_autocmd("DirChanged", {
+        callback = function()
+          ensure_session_async()
+        end,
+      })
+      vim.schedule(function()
+        ensure_session_async()
+      end)
 
       -- Neovim debe recargar los ficheros que OpenCode edita.
       vim.o.autoread = true
