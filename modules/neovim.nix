@@ -457,6 +457,9 @@ in
 
       -- Si el directorio actual no tiene sesion, crearla. La API v2 la
       -- crea en el cwd del daemon, que en este caso es el del proyecto.
+      --
+      -- OJO: `server.new(url, ...)` devuelve una PROMESA que resuelve al
+      -- servidor, no el servidor directamente.
       local function ensure_session()
         local cwd = vim.fn.getcwd()
         local url = ensure_project_server(cwd)
@@ -464,13 +467,27 @@ in
           return false
         end
 
-        local server = require("opencode.server").new(url, {
+        -- Resolver el servidor (la promesa hace el GET /api/info).
+        local server, resolved = nil, false
+        require("opencode.server").new(url, {
           username = "opencode",
           password = opencode_state.password,
-        })
+        }):next(function(s)
+          server = s
+          resolved = true
+        end, function()
+          resolved = true
+        end)
+        vim.wait(5000, function()
+          return resolved
+        end, 50)
 
-        local found = false
-        local checked = false
+        if not server then
+          return false
+        end
+
+        -- ¿Ya hay una sesion para este directorio?
+        local found, checked = false, false
         server:get_sessions():next(function(sessions)
           for _, session in ipairs(sessions or {}) do
             if not (session.time and session.time.archived) then
@@ -482,7 +499,7 @@ in
         end, function()
           checked = true
         end)
-        vim.wait(3000, function()
+        vim.wait(4000, function()
           return checked
         end, 50)
 
@@ -490,6 +507,7 @@ in
           return true
         end
 
+        -- Crear una.
         local created, created_done = false, false
         server:request("/api/session", "POST", {}):next(function(response)
           created = response and response.data and true or false
@@ -497,7 +515,7 @@ in
         end, function()
           created_done = true
         end)
-        vim.wait(4000, function()
+        vim.wait(5000, function()
           return created_done
         end, 50)
 
