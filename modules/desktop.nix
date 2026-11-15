@@ -84,6 +84,9 @@ in
     font-awesome
     material-design-icons
     material-symbols
+    noto-fonts
+    noto-fonts-cjk-sans
+    noto-fonts-color-emoji
     nerd-fonts.fira-code
     nerd-fonts.symbols-only
     papirus-icon-theme

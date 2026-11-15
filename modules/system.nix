@@ -117,6 +117,21 @@
   # se vuelve a necesitar algun servicio de usuario en el arranque.
   systemd.services."linger@pozito" = {};
 
+  # Conserva unicamente las cinco generaciones mas recientes del perfil del
+  # sistema y ejecuta GC al final de cada rebuild. El perfil se mantiene como
+  # root de GC para que esas cinco generaciones sigan siendo reversibles.
+  systemd.services.nixos-generation-retention = {
+    description = "Retener las ultimas 5 generaciones de NixOS";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.nixVersions.stable}/bin/nix-env -p /nix/var/nix/profiles/system --delete-generations +5";
+      ExecStartPost = "${pkgs.nixVersions.stable}/bin/nix-collect-garbage -d";
+    };
+  };
+
   # ─── Pangolin (VPN WireGuard) ──────────────────────────────────────────
   # Cliente de Pangolin/NetBird. Servicio de SISTEMA (root) y en primer
   # plano (--attach), por dos motivos:

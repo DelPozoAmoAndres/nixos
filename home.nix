@@ -23,6 +23,14 @@ let
 in
 
 {
+  # ─── Neovim / LazyVim ────────────────────────────────────────────────
+  # Configuracion del editor (LazyVim, LSPs de Go/Angular/TS/Nix, plugins
+  # y herramientas). Es un modulo de Home Manager, asi que se importa
+  # desde el config del usuario y no desde configuration.nix.
+  imports = [
+    ./modules/neovim.nix
+  ];
+
   programs.home-manager.enable = true;
 
   home.username = "pozito";
@@ -33,7 +41,7 @@ in
   # en sesiones sin GNOME como Hyprland
   home.sessionVariables = {
     GIO_EXTRA_MODULES = "/run/current-system/sw/lib/gio/modules";
-    XDG_DATA_DIRS = "${pkgs.glib}/share:/var/lib/flatpak/exports/share:${config.home.homeDirectory}/.local/share/flatpak/exports/share";
+    XDG_DATA_DIRS = "/run/current-system/sw/share:${pkgs.glib}/share:/var/lib/flatpak/exports/share:${config.home.homeDirectory}/.local/share/flatpak/exports/share";
   };
 
   # ─── Git ───────────────────────────────────────────────────────────────
@@ -67,6 +75,7 @@ in
   programs.kitty = {
     enable = true;
     settings = {
+      font_family = "FiraCode Nerd Font Mono";
       confirm_os_window_close = 0;
     };
   };
@@ -190,18 +199,6 @@ in
     ".config/wayle/styles/index.scss" = {
       source = ./dotfiles/wayle/styles/index.scss;
     };
-
-    # Limita la cache de fontconfig del usuario: con 74 GB de store, la del
-    # home llegaba a 130 MB con 26.000 entradas de store paths ya borrados.
-    # Va en el conf.d del usuario porque /etc/fonts es un symlink de solo
-    # lectura al paquete de fontconfig (no se puede meter nada ahi).
-    ".config/fontconfig/conf.d/99-cache-size.conf".text = ''
-      <match target="cache">
-        <edit name="max_size" mode="assign">
-          <int>8388608</int>
-        </edit>
-      </match>
-    '';
 
     ".config/filezilla/sitemanager.xml" = {
       text = ''
@@ -407,4 +404,3 @@ in
     };
   };
 }
-
