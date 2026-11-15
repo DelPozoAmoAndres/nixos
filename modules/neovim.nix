@@ -378,16 +378,19 @@ in
             opts = {
               terminal = { enabled = true },
             },
+            -- La forma de lazy.nvim es { lhs, rhs, opts }. El modo va
+            -- en `opts.mode`, no como primer elemento del array (eso
+            -- hace que lazy.nvim intente leer una tabla donde espera
+            -- un string y falle al montar los handlers).
             keys = {
               {
-                { "n", "t" },
                 "<C-.>",
                 function()
                   require("snacks.terminal").toggle("opencode", {
                     win = { position = "right", enter = false },
                   })
                 end,
-                desc = "Terminal de OpenCode",
+                { mode = { "n", "t" }, desc = "Terminal de OpenCode" },
               },
             },
           },
